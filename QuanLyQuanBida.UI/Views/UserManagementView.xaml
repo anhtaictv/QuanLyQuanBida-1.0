@@ -1,0 +1,40 @@
+﻿<Window x:Class="QuanLyQuanBida.UI.Views.UserManagementView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Quản lý Người dùng" Height="450" Width="800">
+    <Grid Margin="10">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="2*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Bên trái: Form tạo user mới -->
+        <StackPanel Grid.Column="0" Margin="0,0,10,0">
+            <TextBlock Text="Tạo Người Dùng Mới" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
+            <Label Content="Tên đăng nhập:"/>
+            <TextBox x:Name="NewUsernameTextBox" Height="25" Margin="0,0,0,10"/>
+
+            <Label Content="Mật khẩu:"/>
+            <PasswordBox x:Name="NewPasswordBox" Height="25" Margin="0,0,0,10"/>
+
+            <Label Content="Họ và tên:"/>
+            <TextBox x:Name="NewFullNameTextBox" Height="25" Margin="0,0,0,10"/>
+
+            <Label Content="Vai trò:"/>
+            <ComboBox x:Name="RoleComboBox" Height="25" DisplayMemberPath="Name" SelectedValuePath="Id" Margin="0,0,0,10"/>
+
+            <Button Content="Tạo User" Click="CreateUserButton_Click" Height="30"/>
+        </StackPanel>
+
+        <!-- Bên phải: Danh sách user hiện có -->
+        <DataGrid Grid.Column="1" x:Name="UsersDataGrid" AutoGenerateColumns="False" IsReadOnly="True">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="ID" Binding="{Binding Id}" />
+                <DataGridTextColumn Header="Tên đăng nhập" Binding="{Binding Username}" />
+                <DataGridTextColumn Header="Họ và tên" Binding="{Binding FullName}" />
+                <DataGridTextColumn Header="Vai trò" Binding="{Binding Role.Name}" />
+                <DataGridCheckBoxColumn Header="Hoạt động" Binding="{Binding IsActive}" />
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</Window>

@@ -1,0 +1,39 @@
+﻿<Window x:Class="QuanLyQuanBida.UI.Views.LoginView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:viewmodels="clr-namespace:QuanLyQuanBida.UI.ViewModels" 
+        Title="Đăng nhập" Height="300" Width="400"
+        WindowStartupLocation="CenterScreen">
+
+    
+    <Grid Margin="20">
+        <!-- ... Grid.RowDefinitions giữ nguyên ... -->
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Quản Lý Quán Bida" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center" Grid.Row="0" Margin="0,0,0,20"/>
+
+        <StackPanel Grid.Row="1">
+            <Label Content="Tên đăng nhập:"/>
+            <!-- Bind Textbox với property Username -->
+            <TextBox Text="{Binding Username, UpdateSourceTrigger=PropertyChanged}" Height="25"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Margin="0,10,0,0">
+            <Label Content="Mật khẩu:"/>
+            <!-- Bind PasswordBox với property Password -->
+            <PasswordBox PasswordChanged="PasswordBox_PasswordChanged" Height="25"/>
+        </StackPanel>
+
+        <!-- Hiển thị lỗi nếu có -->
+        <TextBlock Grid.Row="3" Text="{Binding ErrorMessage}" Foreground="Red" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+
+        <!-- Bind Command của Button với LoginCommand -->
+        <Button Grid.Row="4" Content="Đăng nhập" Height="30" Width="100" Command="{Binding LoginCommand}"/>
+    </Grid>
+</Window>
