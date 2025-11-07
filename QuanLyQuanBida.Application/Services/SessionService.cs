@@ -3,43 +3,127 @@ using QuanLyQuanBida.Core.Entities;
 using QuanLyQuanBida.Core.Interfaces;
 using QuanLyQuanBida.Infrastructure.Data.Context;
 
-namespace QuanLyQuanBida.Application.Services;
-
-public class SessionService : ISessionService
+namespace QuanLyQuanBida.Application.Services
 {
-    private readonly QuanLyBidaDbContext _context;
-
-    public SessionService(QuanLyBidaDbContext context)
+    public class SessionService : ISessionService
     {
-        _context = context;
-    }
+        private readonly QuanLyBidaDbContext _context;
 
-    public async Task<Session?> StartSessionAsync(int tableId, int userId)
-    {
-        // 1. Kiểm tra xem bàn có đang trống không
-        var table = await _context.Tables.FirstOrDefaultAsync(t => t.Id == tableId);
-        if (table == null || table.Status != "Free")
+        public SessionService(QuanLyBidaDbContext context)
         {
-            return null; // Bàn không tồn tại hoặc không trống
+            _context = context;
         }
 
-        // 2. Tạo một phiên chơi mới
-        var newSession = new Session
+        // Đã sửa: Thêm rateId và trả về Session
+        public async Task<Session?> StartSessionAsync(int tableId, int userId, int rateId)
         {
-            TableId = tableId,
-            UserOpenId = userId,
-            StartAt = DateTime.UtcNow,
-            Status = "Started"
-        };
+            var table = await _context.Tables.FirstOrDefaultAsync(t => t.Id == tableId);
+            if (table == null || table.Status != "Free")
+            {
+                return null;
+            }
 
-        _context.Sessions.Add(newSession);
+            var newSession = new Session
+            {
+                TableId = tableId,
+                UserOpenId = userId,
+                StartAt = DateTime.UtcNow,
+                Status = "Started"
+            };
 
-        // 3. Cập nhật trạng thái bàn
-        table.Status = "Occupied";
+            _context.Sessions.Add(newSession);
+            table.Status = "Occupied";
 
-        // 4. Lưu thay đổi vào database
-        await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync();
+            return newSession;
+        }
 
-        return newSession;
+        public async Task<bool> PauseSessionAsync(int sessionId, int userId)
+        {
+            var session = await _context.Sessions.FindAsync(sessionId);
+            if (session == null || session.Status != "Started")
+            {
+                return false;
+            }
+
+            session.Status = "Paused";
+            session.PauseAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> ResumeSessionAsync(int sessionId, int userId)
+        {
+            var session = await _context.Sessions.FindAsync(sessionId);
+            if (session == null || session.Status != "Paused")
+            {
+                return false;
+            }
+
+            session.Status = "Started";
+            session.ResumeAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<Session?> CloseSessionAsync(int sessionId, int userId)
+        {
+            var session = await _context.Sessions
+                .Include(s => s.Table)
+                .FirstOrDefaultAsync(s => s.Id == sessionId);
+
+            if (session == null || session.Status == "Finished")
+            {
+                return null;
+            }
+
+            session.EndAt = DateTime.UtcNow;
+            session.Status = "Finished";
+
+            var totalDuration = session.EndAt.Value - session.StartAt;
+            if (session.PauseAt.HasValue && session.ResumeAt.HasValue)
+            {
+                totalDuration = totalDuration - (session.ResumeAt.Value - session.PauseAt.Value);
+            }
+
+            session.TotalMinutes = (int)totalDuration.TotalMinutes;
+            session.Table.Status = "Free";
+
+            await _context.SaveChangesAsync();
+            return session;
+        }
+
+        public async Task<bool> MoveSessionAsync(int sessionId, int targetTableId, int userId)
+        {
+            var session = await _context.Sessions.FindAsync(sessionId);
+            var targetTable = await _context.Tables.FindAsync(targetTableId);
+
+            if (session == null || targetTable == null || targetTable.Status != "Free")
+            {
+                return false;
+            }
+
+            var currentTable = await _context.Tables.FindAsync(session.TableId);
+            if (currentTable != null)
+            {
+                currentTable.Status = "Free";
+            }
+
+            session.TableId = targetTableId;
+            targetTable.Status = "Occupied";
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        // Thêm phương thức mới
+        public async Task<Session?> GetActiveSessionByTableIdAsync(int tableId)
+        {
+            return await _context.Sessions
+                .Where(s => s.TableId == tableId && s.Status != "Finished")
+                .FirstOrDefaultAsync();
+        }
     }
 }

@@ -1,68 +1,23 @@
-﻿using Microsoft.EntityFrameworkCore;
-using QuanLyQuanBida.Core.Entities;
-using QuanLyQuanBida.Core.Interfaces;
-using QuanLyQuanBida.Infrastructure.Data.Context;
-using System.Windows;
+﻿using System.Windows;
+using QuanLyQuanBida.UI.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace QuanLyQuanBida.UI.Views;
-public partial class UserManagementView : Window
+namespace QuanLyQuanBida.UI.Views
 {
-    private readonly IAuthService _authService;
-    private readonly QuanLyBidaDbContext _context;
-
-    public UserManagementView(IAuthService authService, QuanLyBidaDbContext context)
+    public partial class UserManagementView : Window
     {
-        InitializeComponent();
-        _authService = authService;
-        _context = context;
-        LoadUsers();
-        LoadRoles();
-    }
-
-    private async void LoadUsers()
-    {
-        var users = await _context.Users.Include(u => u.Role).ToListAsync();
-        UsersDataGrid.ItemsSource = users;
-    }
-
-    private async void LoadRoles()
-    {
-        var roles = await _context.Roles.ToListAsync();
-        RoleComboBox.ItemsSource = roles;
-        if (roles.Any())
+        public UserManagementView()
         {
-            RoleComboBox.SelectedIndex = 0; // Chọn role đầu tiên mặc định
+            InitializeComponent();
+            this.DataContext = App.Services.GetRequiredService<UserManagementViewModel>();
         }
-    }
 
-    private async void CreateUserButton_Click(object sender, RoutedEventArgs e)
-    {
-        string username = NewUsernameTextBox.Text;
-        string password = NewPasswordBox.Password;
-        string fullName = NewFullNameTextBox.Text;
-
-        if (RoleComboBox.SelectedValue is int roleId)
+        private void PasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
         {
-            bool success = await _authService.CreateUserAsync(username, password, fullName, roleId);
-
-            if (success)
+            if (this.DataContext is UserManagementViewModel viewModel)
             {
-                MessageBox.Show("Tạo người dùng thành công!");
-                // Xóa form
-                NewUsernameTextBox.Clear();
-                NewPasswordBox.Clear();
-                NewFullNameTextBox.Clear();
-                // Tải lại danh sách
-                LoadUsers();
+                viewModel.UserForm.Password = ((System.Windows.Controls.PasswordBox)sender).Password;
             }
-            else
-            {
-                MessageBox.Show("Tên đăng nhập đã tồn tại hoặc có lỗi xảy ra.");
-            }
-        }
-        else
-        {
-            MessageBox.Show("Vui lòng chọn vai trò.");
         }
     }
 }

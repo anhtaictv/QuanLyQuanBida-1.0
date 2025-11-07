@@ -1,4 +1,4 @@
-﻿<Window x:Class="QuanLyQuanBida.UI.Views.UserManagementView"
+﻿<Window x:Class="QuanLyQuanBida.UI.Views.ProductManagementView"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -6,10 +6,10 @@
         xmlns:local="clr-namespace:QuanLyQuanBida.UI.Views"
         xmlns:viewmodels="clr-namespace:QuanLyQuanBida.UI.ViewModels"
         mc:Ignorable="d"
-        Title="Quản lý Người dùng" Height="600" Width="900"
+        Title="Quản lý Sản phẩm" Height="600" Width="900"
         WindowStartupLocation="CenterScreen">
     <Window.DataContext>
-        <viewmodels:UserManagementViewModel/>
+        <viewmodels:ProductManagementViewModel/>
     </Window.DataContext>
     <Grid Margin="10">
         <Grid.ColumnDefinitions>
@@ -17,45 +17,40 @@
             <ColumnDefinition Width="2*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- Form tạo/sửa user -->
+        <!-- Form tạo/sửa sản phẩm -->
         <StackPanel Grid.Column="0" Margin="0,0,10,0">
-            <TextBlock Text="Thông tin người dùng" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
+            <TextBlock Text="Thông tin sản phẩm" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
 
             <Label Content="ID:" Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}"/>
             <TextBox x:Name="IdTextBox" Height="25" Margin="0,0,0,10" 
-                     IsReadOnly="True" Text="{Binding SelectedUser.Id}"
+                     IsReadOnly="True" Text="{Binding SelectedProduct.Id}"
                      Visibility="{Binding IsEditing, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
-            <Label Content="Tên đăng nhập:"/>
-            <TextBox x:Name="UsernameTextBox" Height="25" Margin="0,0,0,10" 
-                     Text="{Binding UserForm.Username}"/>
+            <Label Content="Tên sản phẩm:"/>
+            <TextBox x:Name="NameTextBox" Height="25" Margin="0,0,0,10" 
+                     Text="{Binding ProductForm.Name}"/>
 
-            <Label Content="Mật khẩu:"/>
-            <PasswordBox x:Name="PasswordBox" Height="25" Margin="0,0,0,10" 
-                         PasswordChanged="PasswordBox_PasswordChanged"/>
+            <Label Content="Giá bán:"/>
+            <TextBox x:Name="PriceTextBox" Height="25" Margin="0,0,0,10" 
+                     Text="{Binding ProductForm.Price}"/>
 
-            <Label Content="Họ và tên:"/>
-            <TextBox x:Name="FullNameTextBox" Height="25" Margin="0,0,0,10" 
-                     Text="{Binding UserForm.FullName}"/>
+            <Label Content="Danh mục:"/>
+            <ComboBox x:Name="CategoryComboBox" Height="25" IsEditable="True" 
+                      Text="{Binding ProductForm.Category}" Margin="0,0,0,10"/>
 
-            <Label Content="Số điện thoại:"/>
-            <TextBox x:Name="PhoneTextBox" Height="25" Margin="0,0,0,10" 
-                     Text="{Binding UserForm.Phone}"/>
+            <Label Content="Đơn vị tính:"/>
+            <TextBox x:Name="UnitTextBox" Height="25" Margin="0,0,0,10" 
+                     Text="{Binding ProductForm.Unit}"/>
 
-            <Label Content="Vai trò:"/>
-            <ComboBox x:Name="RoleComboBox" Height="25" DisplayMemberPath="Name" 
-                      SelectedValuePath="Id" SelectedValue="{Binding UserForm.RoleId}"
-                      ItemsSource="{Binding Roles}" Margin="0,0,0,10"/>
-
-            <CheckBox Content="Hoạt động" IsChecked="{Binding UserForm.IsActive}" Margin="0,0,0,10"/>
+            <CheckBox Content="Theo dõi tồn kho" IsChecked="{Binding ProductForm.IsInventoryTracked}" Margin="0,0,0,10"/>
 
             <StackPanel Orientation="Horizontal">
-                <Button Content="Lưu" Width="80" Margin="0,0,5,0" Command="{Binding SaveUserCommand}"/>
+                <Button Content="Lưu" Width="80" Margin="0,0,5,0" Command="{Binding SaveProductCommand}"/>
                 <Button Content="Hủy" Width="80" Command="{Binding CancelCommand}"/>
             </StackPanel>
         </StackPanel>
 
-        <!-- Danh sách user -->
+        <!-- Danh sách sản phẩm -->
         <Grid Grid.Column="1">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -67,26 +62,27 @@
                          Margin="0,0,10,0"/>
                 <Button Content="Tìm kiếm" Width="80" Command="{Binding SearchCommand}"/>
                 <Button Content="Thêm mới" Width="80" Margin="10,0,0,0" Command="{Binding AddNewCommand}"/>
+                <Button Content="Nhập từ Excel" Width="100" Margin="10,0,0,0" Command="{Binding ImportFromExcelCommand}"/>
             </StackPanel>
 
-            <DataGrid Grid.Row="1" x:Name="UsersDataGrid" AutoGenerateColumns="False" 
-                      IsReadOnly="True" SelectedItem="{Binding SelectedUser}">
+            <DataGrid Grid.Row="1" x:Name="ProductsDataGrid" AutoGenerateColumns="False" 
+                      IsReadOnly="True" SelectedItem="{Binding SelectedProduct}">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="50"/>
-                    <DataGridTextColumn Header="Tên đăng nhập" Binding="{Binding Username}" Width="120"/>
-                    <DataGridTextColumn Header="Họ và tên" Binding="{Binding FullName}" Width="150"/>
-                    <DataGridTextColumn Header="SĐT" Binding="{Binding Phone}" Width="100"/>
-                    <DataGridTextColumn Header="Vai trò" Binding="{Binding Role.Name}" Width="100"/>
-                    <DataGridCheckBoxColumn Header="Hoạt động" Binding="{Binding IsActive}" Width="80"/>
+                    <DataGridTextColumn Header="Tên sản phẩm" Binding="{Binding Name}" Width="200"/>
+                    <DataGridTextColumn Header="Giá bán" Binding="{Binding Price, StringFormat='{}{0:N0}'}" Width="100"/>
+                    <DataGridTextColumn Header="Danh mục" Binding="{Binding Category}" Width="120"/>
+                    <DataGridTextColumn Header="Đơn vị" Binding="{Binding Unit}" Width="80"/>
+                    <DataGridCheckBoxColumn Header="Theo dõi tồn kho" Binding="{Binding IsInventoryTracked}" Width="120"/>
                     <DataGridTemplateColumn Header="Thao tác" Width="*">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal">
                                     <Button Content="Sửa" Width="50" Margin="0,0,5,0" 
-                                            Command="{Binding DataContext.EditUserCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            Command="{Binding DataContext.EditProductCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                             CommandParameter="{Binding}"/>
                                     <Button Content="Xóa" Width="50" 
-                                            Command="{Binding DataContext.DeleteUserCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            Command="{Binding DataContext.DeleteProductCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                             CommandParameter="{Binding}"/>
                                 </StackPanel>
                             </DataTemplate>

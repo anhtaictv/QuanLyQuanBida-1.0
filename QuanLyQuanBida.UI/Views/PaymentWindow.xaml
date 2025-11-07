@@ -1,0 +1,121 @@
+﻿<!-- Tạo PaymentWindow.xaml trong Views -->
+<Window x:Class="QuanLyQuanBida.UI.Views.PaymentWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:QuanLyQuanBida.UI.Views"
+        xmlns:viewmodels="clr-namespace:QuanLyQuanBida.UI.ViewModels"
+        mc:Ignorable="d"
+        Title="Thanh toán" Height="600" Width="500"
+        WindowStartupLocation="CenterScreen">
+    <Window.DataContext>
+        <viewmodels:PaymentViewModel/>
+    </Window.DataContext>
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Invoice Info -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock Text="HÓA ĐƠN" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center"/>
+            <TextBlock Text="{Binding Invoice.InvoiceNumber}" FontSize="14" HorizontalAlignment="Center"/>
+            <TextBlock Text="{Binding Invoice.TableName, StringFormat='Bàn: {0}'}" FontSize="14" HorizontalAlignment="Center"/>
+            <TextBlock Text="{Binding Invoice.StartTime, StringFormat='Bắt đầu: {0:HH:mm dd/MM/yyyy}'}" FontSize="12"/>
+            <TextBlock Text="{Binding Invoice.EndTime, StringFormat='Kết thúc: {0:HH:mm dd/MM/yyyy}'}" FontSize="12"/>
+            <TextBlock Text="{Binding Invoice.DurationMinutes, StringFormat='Thời gian: {0} phút'}" FontSize="12"/>
+        </StackPanel>
+
+        <!-- Invoice Details -->
+        <Grid Grid.Row="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Text="Chi tiết:" FontWeight="Bold" Margin="0,0,0,5"/>
+
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Tiền giờ:"/>
+                <TextBlock Grid.Column="1" Text="{Binding Invoice.TimeCharge, StringFormat='{}{0:N0} VNĐ'}" HorizontalAlignment="Right"/>
+            </Grid>
+
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Đồ uống/Thức ăn:"/>
+                <TextBlock Grid.Column="1" Text="{Binding Invoice.OrderTotal, StringFormat='{}{0:N0} VNĐ'}" HorizontalAlignment="Right"/>
+            </Grid>
+
+            <Grid Grid.Row="3">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Tạm tính:"/>
+                <TextBlock Grid.Column="1" Text="{Binding Invoice.SubTotal, StringFormat='{}{0:N0} VNĐ'}" HorizontalAlignment="Right"/>
+            </Grid>
+
+            <Grid Grid.Row="4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Thuế (10%):"/>
+                <TextBlock Grid.Column="1" Text="{Binding Invoice.Tax, StringFormat='{}{0:N0} VNĐ'}" HorizontalAlignment="Right"/>
+            </Grid>
+
+            <Grid Grid.Row="5">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Phí dịch vụ (5%):"/>
+                <TextBlock Grid.Column="1" Text="{Binding Invoice.ServiceFee, StringFormat='{}{0:N0} VNĐ'}" HorizontalAlignment="Right"/>
+            </Grid>
+
+            <Separator Grid.Row="6" Margin="0,10"/>
+
+            <Grid Grid.Row="7">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="Tổng cộng:" FontWeight="Bold" FontSize="16"/>
+                <TextBlock Grid.Column="1" Text="{Binding Invoice.Total, StringFormat='{}{0:N0} VNĐ'}" FontWeight="Bold" FontSize="16" HorizontalAlignment="Right"/>
+            </Grid>
+        </Grid>
+
+        <!-- Payment Method -->
+        <StackPanel Grid.Row="2" Margin="0,20,0,10">
+            <TextBlock Text="Phương thức thanh toán:" FontWeight="Bold"/>
+            <ComboBox x:Name="PaymentMethodComboBox" SelectedIndex="0" Height="25">
+                <ComboBoxItem Content="Tiền mặt"/>
+                <ComboBoxItem Content="Thẻ ngân hàng"/>
+                <ComboBoxItem Content="Ví điện tử"/>
+                <ComboBoxItem Content="Ghi nợ"/>
+            </ComboBox>
+        </StackPanel>
+
+        <!-- Action Buttons -->
+        <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="In hóa đơn" Width="100" Margin="0,0,10,0" Command="{Binding PrintInvoiceCommand}"/>
+            <Button Content="Thanh toán" Width="100" Command="{Binding ProcessPaymentCommand}"/>
+        </StackPanel>
+    </Grid>
+</Window>
