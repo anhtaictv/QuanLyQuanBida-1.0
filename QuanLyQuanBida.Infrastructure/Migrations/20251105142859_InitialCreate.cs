@@ -24,6 +24,17 @@ namespace QuanLyQuanBida.Infrastructure.Migrations
                     table.PrimaryKey("PK_Roles", x => x.Id);
                 });
 
+            migrationBuilder.InsertData(
+                table: "Roles",
+                columns: new[] { "Id", "Name" },
+                values: new object[,]
+                {
+                    { 1, "Owner" },
+                    { 2, "Manager" },
+                    { 3, "Cashier" },
+                    { 4, "Staff" }
+            });
+
             migrationBuilder.CreateTable(
                 name: "Users",
                 columns: table => new

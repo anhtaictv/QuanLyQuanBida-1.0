@@ -1,6 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using QuanLyQuanBida.Core.Interfaces;
 using QuanLyQuanBida.Infrastructure.Data.Context;
+using QuanLyQuanBida.Core.Entities;
+
 
 namespace QuanLyQuanBida.Application.Services
 {

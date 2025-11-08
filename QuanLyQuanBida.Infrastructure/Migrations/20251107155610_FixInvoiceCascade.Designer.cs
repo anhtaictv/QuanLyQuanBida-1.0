@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using QuanLyQuanBida.Infrastructure.Data.Context;
 
@@ -11,9 +12,11 @@ using QuanLyQuanBida.Infrastructure.Data.Context;
 namespace QuanLyQuanBida.Infrastructure.Migrations
 {
     [DbContext(typeof(QuanLyBidaDbContext))]
-    partial class QuanLyBidaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251107155610_FixInvoiceCascade")]
+    partial class FixInvoiceCascade
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -284,28 +287,6 @@ namespace QuanLyQuanBida.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Roles");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            Name = "Owner"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Name = "Manager"
-                        },
-                        new
-                        {
-                            Id = 3,
-                            Name = "Cashier"
-                        },
-                        new
-                        {
-                            Id = 4,
-                            Name = "Staff"
-                        });
                 });
 
             modelBuilder.Entity("QuanLyQuanBida.Core.Entities.Session", b =>

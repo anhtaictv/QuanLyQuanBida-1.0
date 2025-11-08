@@ -7,13 +7,12 @@ using System.Windows;
 using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
 
-
 namespace QuanLyQuanBida.UI.ViewModels;
 
 public partial class LoginViewModel : ObservableObject
 {
     private readonly IAuthService _authService;
-    private readonly ICurrentUserService _currentUserService; // (1) Thêm dòng này
+    private readonly ICurrentUserService _currentUserService;
 
     [ObservableProperty]
     private string _username = string.Empty;
@@ -24,7 +23,11 @@ public partial class LoginViewModel : ObservableObject
     [ObservableProperty]
     private string _errorMessage = string.Empty;
 
-    // (2) Cập nhật constructor để nhận ICurrentUserService
+    // === THÊM THUỘC TÍNH NÀY ===
+    [ObservableProperty]
+    private bool _isRememberMe = false;
+    // ========================
+
     public LoginViewModel(IAuthService authService, ICurrentUserService currentUserService)
     {
         _authService = authService;
@@ -34,7 +37,7 @@ public partial class LoginViewModel : ObservableObject
     [RelayCommand]
     private async Task LoginAsync()
     {
-        ErrorMessage = string.Empty; 
+        ErrorMessage = string.Empty;
 
         if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Password))
         {
@@ -42,25 +45,32 @@ public partial class LoginViewModel : ObservableObject
             return;
         }
 
-        User? loggedInUser = await _authService.LoginAsync(Username, Password);
-
-        if (loggedInUser != null)
+        try
         {
-            // (3) Lưu thông tin user đã đăng nhập vào service
-            _currentUserService.CurrentUser = loggedInUser;
+            User? loggedInUser = await _authService.LoginAsync(Username, Password);
 
-            // Đăng nhập thành công!
-            // Đóng cửa sổ Login
-            App.Current.Windows.OfType<Window>().FirstOrDefault(w => w.DataContext is LoginViewModel)?.Close();
+            if (loggedInUser != null)
+            {
+                // Lưu thông tin user đã đăng nhập vào service
+                _currentUserService.CurrentUser = loggedInUser;
 
-            // Mở cửa sổ chính (MainWindow)
-            var mainWindow = App.Services.GetRequiredService<MainWindow>();
-            mainWindow.Show();
+                // Đóng cửa sổ Login
+                App.Current.Windows.OfType<Window>().FirstOrDefault(w => w.DataContext is LoginViewModel)?.Close();
+
+                // Mở cửa sổ chính (MainWindow)
+                var mainWindow = App.Services.GetRequiredService<MainWindow>();
+                mainWindow.Show();
+            }
+            else
+            {
+                // Đăng nhập thất bại
+                ErrorMessage = "Tên đăng nhập hoặc mật khẩu không đúng.";
+            }
         }
-        else
+        catch (Exception ex)
         {
-            // Đăng nhập thất bại
-            ErrorMessage = "Tên đăng nhập hoặc mật khẩu không đúng.";
+            // Hiển thị lỗi nếu có (ví dụ: lỗi kết nối DB)
+            ErrorMessage = $"Đã xảy ra lỗi: {ex.Message}";
         }
     }
 }

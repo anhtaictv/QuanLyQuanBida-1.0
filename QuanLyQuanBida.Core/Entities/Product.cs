@@ -12,9 +12,18 @@ public class Product
 
     [Required]
     public decimal Price { get; set; }
+    public bool IsInventoryTracked { get; set; } = true;
+
+    public int Quantity { get; set; }
 
     [MaxLength(50)]
-    public string? Category { get; set; } // Ví dụ: "Đồ uống", "Thức ăn", "Thuốc lá"
+    public string Unit { get; set; } = string.Empty;
 
-    public string? ImageUrl { get; set; } // Đường dẫn ảnh (làm sau)
+    [MaxLength(50)]
+    public string? Category { get; set; } 
+
+    public string? ImageUrl { get; set; }
+
+    public virtual ICollection<InventoryTransaction> InventoryTransactions { get; set; } = new List<InventoryTransaction>();
+}
 }

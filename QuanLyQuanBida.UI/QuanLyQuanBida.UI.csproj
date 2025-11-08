@@ -9,12 +9,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.10">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.10">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.10" />
   </ItemGroup>
 
@@ -22,6 +27,18 @@
     <ProjectReference Include="..\QuanLyQuanBida.Application\QuanLyQuanBida.Application.csproj" />
     <ProjectReference Include="..\QuanLyQuanBida.Core\QuanLyQuanBida.Core.csproj" />
     <ProjectReference Include="..\QuanLyQuanBida.Infrastructure\QuanLyQuanBida.Infrastructure.csproj" />
+	<PackageReference Include="Serilog" Version="4.3.0" />
+	<PackageReference Include="Serilog.Extensions.Hosting" Version="9.0.0" />
+	<PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
   </ItemGroup>
+
+	<ItemGroup>
+	  <Page Update="LoginView.xaml">
+	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+	  </Page>
+	  <Page Update="Views\LoginView.xaml">
+	    <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+	  </Page>
+	</ItemGroup>
 
 </Project>

@@ -1,0 +1,53 @@
+﻿<Window x:Class="QuanLyQuanBida.UI.Views.BackupWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:QuanLyQuanBida.UI.Views"
+        xmlns:viewmodels="clr-namespace:QuanLyQuanBida.UI.ViewModels"
+        mc:Ignorable="d"
+        Title="Sao lưu & Phục hồi" Height="300" Width="500"
+        WindowStartupLocation="CenterScreen">
+    <Window.DataContext>
+        <viewmodels:BackupViewModel/>
+    </Window.DataContext>
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <Label Content="Thư mục sao lưu:"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0" Height="25" Text="{Binding BackupPath}" IsReadOnly="True"/>
+                <Button Grid.Column="1" Content="..." Width="30" Margin="5,0,0,0" Command="{Binding BrowseBackupPathCommand}"/>
+            </Grid>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Margin="0,20,0,0">
+            <Label Content="Tệp sao lưu:"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0" Height="25" Text="{Binding BackupFile}" IsReadOnly="True"/>
+                <Button Grid.Column="1" Content="..." Width="30" Margin="5,0,0,0" Command="{Binding BrowseBackupFileCommand}"/>
+            </Grid>
+        </StackPanel>
+
+        <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Sao lưu" Width="80" Margin="0,0,5,0" Command="{Binding BackupCommand}"/>
+            <Button Content="Phục hồi" Width="80" Margin="0,0,5,0" Command="{Binding RestoreCommand}"/>
+            <Button Content="Đóng" Width="80" Command="{Binding CancelCommand}"/>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using QuanLyQuanBida.Core.DTOs;
 using QuanLyQuanBida.Core.Entities;
+using Microsoft.EntityFrameworkCore;
 
 
 namespace QuanLyQuanBida.Application.Services

@@ -16,6 +16,7 @@ namespace QuanLyQuanBida.UI.Views
         {
             if (this.DataContext is UserManagementViewModel viewModel)
             {
+                // Cập nhật mật khẩu vào ViewModel khi người dùng gõ
                 viewModel.UserForm.Password = ((System.Windows.Controls.PasswordBox)sender).Password;
             }
         }

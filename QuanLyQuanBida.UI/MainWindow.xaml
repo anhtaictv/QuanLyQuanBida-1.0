@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:QuanLyQuanBida.UI"
         xmlns:controls="clr-namespace:QuanLyQuanBida.UI.Views.Controls"
+        xmlns:converters="clr-namespace:QuanLyQuanBida.UI.Converters"
         mc:Ignorable="d"
         Title="Quản lý Quán Bida" Height="720" Width="1280"
         WindowState="Maximized">
@@ -35,6 +36,15 @@
                 <MenuItem Header="Chủ đề">
                     <MenuItem Header="Sáng" Command="{Binding SetLightThemeCommand}"/>
                     <MenuItem Header="Tối" Command="{Binding SetDarkThemeCommand}"/>
+                </MenuItem>
+                <MenuItem Header="Hệ thống">
+                    <StatusBarItem>
+                        <TextBlock Text="{Binding CurrentUser.FullName, StringFormat='Người dùng: {0}'}"/>
+                    </StatusBarItem>
+                    <Separator/>
+                    <StatusBarItem>
+                        <TextBlock Text="{Binding Source={x:Static local:App.CurrentTime}, StringFormat='{}{0:HH:mm:ss dd/MM/yyyy}'}"/>
+                    </StatusBarItem>
                 </MenuItem>
             </MenuItem>
         </Menu>

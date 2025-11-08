@@ -1,8 +1,9 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using QuanLyQuanBida.Application.Services;
-using QuanLyQuanBida.Core.DTOs;
 using QuanLyQuanBida.Core.Interfaces;
+using QuanLyQuanBida.Core.DTOs;
+using System;
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace QuanLyQuanBida.UI.ViewModels
@@ -10,9 +11,13 @@ namespace QuanLyQuanBida.UI.ViewModels
     public partial class PaymentViewModel : ObservableObject
     {
         private readonly IBillingService _billingService;
+        private readonly IPrintService _printService;
 
         [ObservableProperty]
         private InvoiceDto _invoice = null!;
+
+        // ✅ Dùng delegate để đóng cửa sổ từ View
+        public Action? CloseAction { get; set; }
 
         public PaymentViewModel(IBillingService billingService, IPrintService printService)
         {
@@ -20,15 +25,14 @@ namespace QuanLyQuanBida.UI.ViewModels
             _printService = printService;
         }
 
+        // ✅ Command: Xử lý thanh toán
         [RelayCommand]
         private async Task ProcessPayment()
         {
             if (Invoice == null) return;
 
-            // Get payment method from ComboBox
-            var paymentMethod = "Tiền mặt"; // Default
+            var paymentMethod = "Tiền mặt"; // Có thể lấy từ ComboBox trong View
 
-            // Create payment
             var payment = new PaymentDto
             {
                 Method = paymentMethod,
@@ -41,7 +45,7 @@ namespace QuanLyQuanBida.UI.ViewModels
             if (success)
             {
                 MessageBox.Show("Thanh toán thành công!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
-                Close();
+                CloseAction?.Invoke(); // ✅ Gọi đóng cửa sổ
             }
             else
             {
@@ -49,8 +53,9 @@ namespace QuanLyQuanBida.UI.ViewModels
             }
         }
 
+        // ✅ Command: In hóa đơn (đổi tên tránh trùng)
         [RelayCommand]
-        private async Task PrintInvoice()
+        private async Task PrintInvoiceCommand()
         {
             if (Invoice == null) return;
 

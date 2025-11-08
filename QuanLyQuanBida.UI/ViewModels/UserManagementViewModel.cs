@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using System.Data;
 using System.Windows;
 using System.Windows.Input;
+using QuanLyQuanBida.Core.DTOs;
 
 namespace QuanLyQuanBida.UI.ViewModels
 {
@@ -34,8 +35,9 @@ namespace QuanLyQuanBida.UI.ViewModels
 
         public UserManagementViewModel(IAuthService authService, ICurrentUserService currentUserService)
         {
-            _authService = authService;
-            _currentUserService = currentUserService;
+            _authService = authService ?? throw new ArgumentNullException(nameof(authService));
+            _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
+
             _ = LoadDataAsync();
         }
 
@@ -49,8 +51,6 @@ namespace QuanLyQuanBida.UI.ViewModels
         {
             Users.Clear();
 
-            // Get all users from service
-            // For now, we'll use a placeholder
             var usersFromDb = await Task.FromResult(new List<User>());
 
             foreach (var user in usersFromDb)
@@ -63,8 +63,6 @@ namespace QuanLyQuanBida.UI.ViewModels
         {
             Roles.Clear();
 
-            // Get all roles from service
-            // For now, we'll use a placeholder
             var rolesFromDb = await Task.FromResult(new List<Role>());
 
             foreach (var role in rolesFromDb)
@@ -76,7 +74,6 @@ namespace QuanLyQuanBida.UI.ViewModels
         [RelayCommand]
         private async Task Search()
         {
-            // Implement search logic
             await LoadUsersAsync();
         }
 
@@ -98,7 +95,7 @@ namespace QuanLyQuanBida.UI.ViewModels
             {
                 Id = user.Id,
                 Username = user.Username,
-                FullName = user.FullName,
+                FullName = user.FullName ?? string.Empty,
                 Phone = user.Phone,
                 RoleId = user.RoleId,
                 IsActive = user.IsActive
@@ -120,12 +117,9 @@ namespace QuanLyQuanBida.UI.ViewModels
             {
                 if (IsEditing)
                 {
-                    // Update existing user
-                    // Implement update logic
                 }
                 else
                 {
-                    // Create new user
                     var success = await _authService.CreateUserAsync(
                         UserForm.Username,
                         UserForm.Password,
@@ -148,7 +142,11 @@ namespace QuanLyQuanBida.UI.ViewModels
                 MessageBox.Show($"Lỗi khi lưu thông tin người dùng: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-        public UserManagementViewModel() { }
+        public UserManagementViewModel()
+        {
+            _authService = null!;
+            _currentUserService = null!;
+        }
 
         [RelayCommand]
         private void Cancel()

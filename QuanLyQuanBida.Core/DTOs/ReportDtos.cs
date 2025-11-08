@@ -22,7 +22,16 @@ public class RevenueByTableDto
     public int SessionsCount { get; set; }
     public decimal UtilizationRate { get; set; }
 }
-
+public class UserDto
+{
+    public int Id { get; set; }
+    public string Username { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string? Phone { get; set; }
+    public int RoleId { get; set; }
+    public bool IsActive { get; set; } = true;
+}
 public class RevenueByProductDto
 {
     public string ProductName { get; set; } = string.Empty;
@@ -70,4 +79,22 @@ public class PaymentDto
     public string Method { get; set; } = string.Empty;
     public decimal Amount { get; set; }
     public string? TransactionRef { get; set; }
+}
+public class CustomerDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Phone { get; set; }
+    public string? Address { get; set; }
+    public string Type { get; set; } = "Walk-in";
+    public string? VipCardNumber { get; set; }
+}
+public class OrderDto
+{
+    public int Id { get; set; }
+    public int SessionId { get; set; }
+    public int ProductId { get; set; }
+    public int Quantity { get; set; }
+    public decimal Price { get; set; }
+    public string Note { get; set; } = string.Empty;
 }
