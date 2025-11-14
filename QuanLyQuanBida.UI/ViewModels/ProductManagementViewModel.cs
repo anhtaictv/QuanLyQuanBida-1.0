@@ -7,50 +7,53 @@ using System.Windows;
 using Microsoft.Win32;
 using System.IO;
 using System.Windows.Input;
+using QuanLyQuanBida.Core.DTOs; // <-- THÊM
+using System.Linq; // <-- THÊM
+using MessageBox = System.Windows.MessageBox;
 
 namespace QuanLyQuanBida.UI.ViewModels
 {
     public partial class ProductManagementViewModel : ObservableObject
     {
         private readonly IProductService _productService;
+        private readonly IAuditService _auditService;
+        private readonly ICurrentUserService _currentUserService; 
 
         [ObservableProperty]
         private ObservableCollection<Product> _products = new();
-
         [ObservableProperty]
         private Product? _selectedProduct;
-
         [ObservableProperty]
         private ProductDto _productForm = new();
-
         [ObservableProperty]
         private string _searchText = string.Empty;
-
         [ObservableProperty]
         private bool _isEditing = false;
 
-        public ProductManagementViewModel(IProductService productService)
+        public ProductManagementViewModel(IProductService productService, IAuditService auditService, ICurrentUserService currentUserService)
         {
             _productService = productService;
+            _auditService = auditService; 
+            _currentUserService = currentUserService;
             _ = LoadProductsAsync();
         }
-
         private async Task LoadProductsAsync()
         {
             Products.Clear();
-
             var productsFromDb = await _productService.GetAllProductsAsync();
 
-            foreach (var product in productsFromDb)
+            var filteredList = string.IsNullOrWhiteSpace(SearchText)
+                ? productsFromDb
+                : productsFromDb.Where(p => p.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
+
+            foreach (var product in filteredList)
             {
                 Products.Add(product);
             }
         }
-
         [RelayCommand]
         private async Task Search()
         {
-            // Implement search logic
             await LoadProductsAsync();
         }
 
@@ -58,15 +61,13 @@ namespace QuanLyQuanBida.UI.ViewModels
         private void AddNew()
         {
             SelectedProduct = null;
-            ProductForm = new ProductDto();
+            ProductForm = new ProductDto { Unit = "Cái", IsInventoryTracked = true }; 
             IsEditing = false;
         }
-
         [RelayCommand]
         private void EditProduct(Product product)
         {
             if (product == null) return;
-
             SelectedProduct = product;
             ProductForm = new ProductDto
             {
@@ -89,88 +90,75 @@ namespace QuanLyQuanBida.UI.ViewModels
                 return;
             }
 
+            var currentUserId = _currentUserService.CurrentUser?.Id ?? 0;
+            string oldValue = null;
+
             try
             {
                 if (IsEditing)
                 {
-                    // Update existing product
-                    // Implement update logic
+                    var existing = await _productService.GetProductByIdAsync(ProductForm.Id);
+                    oldValue = $"Name: {existing.Name}, Price: {existing.Price}";
+
+                    bool success = await _productService.UpdateProductAsync(ProductForm);
+                    if (success)
+                    {
+                        await _auditService.LogActionAsync(currentUserId, "UPDATE_PRODUCT", "Products", ProductForm.Id, oldValue, $"Name: {ProductForm.Name}, Price: {ProductForm.Price}");
+                    }
                 }
                 else
                 {
-                    // Create new product
-                    // Implement create logic
+                    var newProduct = await _productService.CreateProductAsync(ProductForm);
+                    if (newProduct != null)
+                    {
+                        await _auditService.LogActionAsync(currentUserId, "CREATE_PRODUCT", "Products", newProduct.Id, newValue: $"Name: {newProduct.Name}, Price: {newProduct.Price}");
+                    }
                 }
-
                 MessageBox.Show("Lưu thông tin sản phẩm thành công.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
                 await LoadProductsAsync();
-                AddNew(); // Reset form
+                AddNew(); 
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Lỗi khi lưu thông tin sản phẩm: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-
         [RelayCommand]
         private void Cancel()
         {
-            AddNew(); // Reset form
+            AddNew();
         }
-
         [RelayCommand]
         private async Task DeleteProduct(Product product)
         {
             if (product == null) return;
-
             if (MessageBox.Show($"Bạn có chắc chắn muốn xóa sản phẩm '{product.Name}'?", "Xác nhận",
                 MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             {
                 try
                 {
-                    // Implement delete logic
-                    await LoadProductsAsync();
-                    MessageBox.Show("Xóa sản phẩm thành công.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+                    var success = await _productService.DeleteProductAsync(product.Id);
+                    if (success)
+                    {
+                        await _auditService.LogActionAsync(_currentUserService.CurrentUser?.Id ?? 0, "DELETE_PRODUCT", "Products", product.Id, oldValue: $"Name: {product.Name}");
+                        await LoadProductsAsync();
+                        MessageBox.Show("Xóa sản phẩm thành công.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show($"Không thể xóa sản phẩm. (Có thể sản phẩm đã được sử dụng trong hóa đơn).", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Lỗi khi xóa sản phẩm: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show($"Lỗi khi xóa sản phẩm: {ex.Message} (Sản phẩm có thể đang được sử dụng)", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
         }
-
         [RelayCommand]
         private void ImportFromExcel()
         {
-            OpenFileDialog openFileDialog = new OpenFileDialog
-            {
-                Filter = "Excel files (*.xlsx)|*.xlsx|All files (*.*)|*.*",
-                Title = "Chọn file Excel để nhập sản phẩm"
-            };
-
-            if (openFileDialog.ShowDialog() == true)
-            {
-                try
-                {
-                    // Implement Excel import logic
-                    MessageBox.Show("Nhập sản phẩm từ Excel thành công.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
-                    _ = LoadProductsAsync();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Lỗi khi nhập sản phẩm từ Excel: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
-                }
-            }
+            MessageBox.Show("TODO: Chức năng Import Excel");
         }
-    }
-
-    public class ProductDto
-    {
-        public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public decimal Price { get; set; }
-        public string? Category { get; set; }
-        public string? Unit { get; set; }
-        public bool IsInventoryTracked { get; set; }
     }
 }

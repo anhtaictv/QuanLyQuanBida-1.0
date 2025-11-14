@@ -8,16 +8,21 @@ namespace QuanLyQuanBida.Application.Services
 {
     public class OrderService : IOrderService
     {
-        private readonly QuanLyBidaDbContext _context;
+        private readonly IDbContextFactory<QuanLyBidaDbContext> _contextFactory;
+        private readonly IInventoryService _inventoryService;
 
-        public OrderService(QuanLyBidaDbContext context)
+        public OrderService(
+            IDbContextFactory<QuanLyBidaDbContext> contextFactory, 
+            IInventoryService inventoryService)
         {
-            _context = context;
+            _contextFactory = contextFactory;
+            _inventoryService = inventoryService;
         }
 
         public async Task<List<Order>> GetOrdersBySessionIdAsync(int sessionId)
         {
-            return await _context.Orders
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.Orders
                 .Include(o => o.Product)
                 .Where(o => o.SessionId == sessionId)
                 .ToListAsync();
@@ -25,38 +30,34 @@ namespace QuanLyQuanBida.Application.Services
 
         public async Task<Order?> CreateOrderAsync(OrderDto orderDto)
         {
-            var product = await _context.Products.FindAsync(orderDto.ProductId);
-            if (product == null)
-            {
-                return null;
-            }
-
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var product = await context.Products.FindAsync(orderDto.ProductId);
+            if (product == null) return null;
             var newOrder = new Order
             {
                 SessionId = orderDto.SessionId,
                 ProductId = orderDto.ProductId,
                 Quantity = orderDto.Quantity,
-                Price = orderDto.Price,
+                Price = product.Price,
                 Note = orderDto.Note,
                 CreatedAt = DateTime.UtcNow
             };
+            context.Orders.Add(newOrder);
+            await context.SaveChangesAsync(); 
 
-            _context.Orders.Add(newOrder);
-
-            // Update inventory if tracked
             if (product.IsInventoryTracked)
             {
-                // We need to add inventory tracking logic
+                await _inventoryService.DeductStockAsync(product.Id, newOrder.Quantity, newOrder.Id);
             }
-
-            await _context.SaveChangesAsync();
 
             return newOrder;
         }
 
         public async Task<bool> UpdateOrderAsync(OrderDto orderDto)
         {
-            var order = await _context.Orders.FindAsync(orderDto.Id);
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var order = await context.Orders.FindAsync(orderDto.Id);
             if (order == null)
             {
                 return false;
@@ -65,21 +66,21 @@ namespace QuanLyQuanBida.Application.Services
             order.Quantity = orderDto.Quantity;
             order.Price = orderDto.Price;
             order.Note = orderDto.Note;
-
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
             return true;
         }
 
         public async Task<bool> DeleteOrderAsync(int orderId)
         {
-            var order = await _context.Orders.FindAsync(orderId);
+            await using var context = await _contextFactory.CreateDbContextAsync(); 
+            var order = await context.Orders.FindAsync(orderId);
             if (order == null)
             {
                 return false;
             }
 
-            _context.Orders.Remove(order);
-            await _context.SaveChangesAsync();
+            context.Orders.Remove(order);
+            await context.SaveChangesAsync();
             return true;
         }
     }

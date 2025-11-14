@@ -1,86 +1,96 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using QuanLyQuanBida.Core.DTOs; // Cần tạo InventoryAdjustmentDto
 using QuanLyQuanBida.Core.Entities;
 using QuanLyQuanBida.Core.Interfaces;
 using System.Collections.ObjectModel;
 using System.Windows;
-using System.Windows.Input;
+using System.Linq;
+using MessageBox = System.Windows.MessageBox;
 
 namespace QuanLyQuanBida.UI.ViewModels
 {
+    // DTO cho Form điều chỉnh
+    public partial class InventoryAdjustmentDto : ObservableObject
+    {
+        [ObservableProperty]
+        private int _productId;
+        [ObservableProperty]
+        private string _transactionType = "IN"; // "IN", "OUT", "ADJUST"
+        [ObservableProperty]
+        private int _quantity;
+        [ObservableProperty]
+        private string? _reference;
+    }
+
     public partial class InventoryManagementViewModel : ObservableObject
     {
-        private readonly IProductService _productService;
         private readonly IInventoryService _inventoryService;
+        private readonly IProductService _productService;
         private readonly ICurrentUserService _currentUserService;
 
         [ObservableProperty]
-        private ObservableCollection<Product> _products = new();
+        private ObservableCollection<Product> _trackedProducts = new(); // DS Sản phẩm được theo dõi
 
-        public InventoryManagementViewModel(
-            IProductService productService,
-            IInventoryService inventoryService,
-            ICurrentUserService currentUserService)
+        [ObservableProperty]
+        private InventoryAdjustmentDto _adjustmentForm = new();
+
+        public ObservableCollection<string> TransactionTypes { get; } = new() { "IN", "OUT", "ADJUST" };
+
+        public InventoryManagementViewModel(IInventoryService inventoryService, IProductService productService, ICurrentUserService currentUserService)
         {
-            _productService = productService;
             _inventoryService = inventoryService;
+            _productService = productService;
             _currentUserService = currentUserService;
-
             _ = LoadProductsAsync();
         }
 
         private async Task LoadProductsAsync()
         {
-            Products.Clear();
-
-            var productsFromDb = await _productService.GetAllProductsAsync();
-
-            foreach (var product in productsFromDb)
+            TrackedProducts.Clear();
+            var allProducts = await _productService.GetAllProductsAsync();
+            // Chỉ hiển thị các sản phẩm có theo dõi tồn kho
+            foreach (var product in allProducts.Where(p => p.IsInventoryTracked))
             {
-                Products.Add(product);
+                TrackedProducts.Add(product);
             }
         }
 
         [RelayCommand]
-        private void AddStock()
+        private async Task AdjustStock()
         {
-            var addStockWindow = new AddStockWindow();
-            if (addStockWindow.ShowDialog() == true)
+            if (_currentUserService.CurrentUser == null)
             {
-                _ = LoadProductsAsync();
+                MessageBox.Show("Lỗi: Không tìm thấy người dùng hiện tại.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
             }
-        }
-
-        [RelayCommand]
-        private void RemoveStock()
-        {
-            var removeStockWindow = new RemoveStockWindow();
-            if (removeStockWindow.ShowDialog() == true)
+            if (AdjustmentForm.ProductId == 0 || AdjustmentForm.Quantity <= 0)
             {
-                _ = LoadProductsAsync();
-            }
-        }
-
-        [RelayCommand]
-        private async Task ShowLowStock()
-        {
-            var lowStockProducts = await _inventoryService.GetLowStockProductsAsync();
-
-            if (lowStockProducts.Count == 0)
-            {
-                MessageBox.Show("Không có sản phẩm nào có tồn kho thấp.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("Vui lòng chọn sản phẩm và nhập số lượng hợp lệ.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
-            var lowStockWindow = new LowStockWindow(lowStockProducts);
-            lowStockWindow.ShowDialog();
-        }
+            var userId = _currentUserService.CurrentUser.Id;
 
-        [RelayCommand]
-        private void ShowTransactionHistory(int productId)
-        {
-            var historyWindow = new TransactionHistoryWindow(productId);
-            historyWindow.ShowDialog();
+            bool success = await _inventoryService.UpdateStockAsync(
+                AdjustmentForm.ProductId,
+                AdjustmentForm.Quantity,
+                AdjustmentForm.TransactionType,
+                AdjustmentForm.Reference ?? "Điều chỉnh thủ công",
+                userId
+            );
+
+            if (success)
+            {
+                MessageBox.Show("Cập nhật tồn kho thành công!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+                await LoadProductsAsync(); // Tải lại danh sách
+                // Reset form
+                AdjustmentForm = new InventoryAdjustmentDto { TransactionType = AdjustmentForm.TransactionType };
+            }
+            else
+            {
+                MessageBox.Show("Cập nhật tồn kho thất bại.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 }

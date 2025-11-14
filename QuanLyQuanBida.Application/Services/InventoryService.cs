@@ -7,76 +7,72 @@ namespace QuanLyQuanBida.Application.Services
 {
     public class InventoryService : IInventoryService
     {
-        private readonly QuanLyBidaDbContext _context;
+        private readonly IDbContextFactory<QuanLyBidaDbContext> _contextFactory;
+        private readonly ICurrentUserService _currentUserService;
 
-        public InventoryService(QuanLyBidaDbContext context)
+        public InventoryService(
+            IDbContextFactory<QuanLyBidaDbContext> contextFactory, 
+            ICurrentUserService currentUserService) 
         {
-            _context = context;
+            _contextFactory = contextFactory; 
+            _currentUserService = currentUserService; 
         }
 
-        public async Task<List<InventoryTransaction>> GetInventoryTransactionsAsync(int productId)
+        public async Task<bool> DeductStockAsync(int productId, int quantity, int orderId)
         {
-            return await _context.InventoryTransactions
-                .Where(t => t.ProductId == productId)
-                .Include(t => t.User)
-                .OrderByDescending(t => t.CreatedAt)
-                .ToListAsync();
-        }
-
-        public async Task<bool> AddStockAsync(int productId, decimal quantity, string reference, int userId)
-        {
-            var product = await _context.Products.FindAsync(productId);
-            if (product == null)
-                return false;
-
-            product.Quantity += (int)quantity;
-
-            var transaction = new InventoryTransaction
-            {
-                ProductId = productId,
-                Type = "IN",
-                Quantity = quantity,
-                Reference = reference,
-                CreatedBy = userId
-            };
-
-            _context.InventoryTransactions.Add(transaction);
-            await _context.SaveChangesAsync();
-
-            return true;
-        }
-
-        public async Task<bool> RemoveStockAsync(int productId, decimal quantity, string reference, int userId)
-        {
-            var product = await _context.Products.FindAsync(productId);
-            if (product == null || product.Quantity < quantity)
-                return false;
-
-            product.Quantity -= (int)quantity;
-
+            await using var context = await _contextFactory.CreateDbContextAsync(); 
+            var product = await context.Products.FindAsync(productId);
+            if (product == null || !product.IsInventoryTracked)
+                return true;
+            // 1. Ghi nhận giao dịch xuất kho
             var transaction = new InventoryTransaction
             {
                 ProductId = productId,
                 Type = "OUT",
                 Quantity = quantity,
-                Reference = reference,
-                CreatedBy = userId
+                Reference = $"Order #{orderId}",
+                CreatedBy = _currentUserService.CurrentUser?.Id ?? 0,
+                CreatedAt = DateTime.UtcNow
             };
-
-            _context.InventoryTransactions.Add(transaction);
-            await _context.SaveChangesAsync();
-
+        context.InventoryTransactions.Add(transaction);
+            // 2. Cập nhật tồn kho trong bảng Products
+            product.Quantity -= quantity;
+            await context.SaveChangesAsync();
             return true;
         }
 
-        public async Task<List<Product>> GetLowStockProductsAsync()
+        public async Task<int> GetCurrentStockAsync(int productId)
         {
-            var minStockSetting = await _context.Settings.FindAsync("MinStockLevel");
-            int minStock = minStockSetting != null ? int.Parse(minStockSetting.Value) : 10;
+            await using var context = await _contextFactory.CreateDbContextAsync(); 
+            var product = await context.Products
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == productId);
+            return product?.Quantity ?? 0;
+        }
 
-            return await _context.Products
-                .Where(p => p.IsInventoryTracked && p.Quantity <= minStock)
-                .ToListAsync();
+        public async Task<bool> UpdateStockAsync(int productId, int quantity, string transactionType, string reference, int userId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var transaction = new InventoryTransaction
+            {
+                ProductId = productId,
+                Type = transactionType,
+                Quantity = quantity,
+                Reference = reference,
+                CreatedBy = userId,
+                CreatedAt = DateTime.UtcNow
+            };
+            context.InventoryTransactions.Add(transaction);
+            var product = await context.Products.FindAsync(productId);
+            if (product == null) return false;
+            if (transactionType == "IN")
+                product.Quantity += quantity;
+            else if (transactionType == "OUT")
+                product.Quantity -= quantity;
+            else if (transactionType == "ADJUST")
+                product.Quantity = quantity;
+            await context.SaveChangesAsync();
+            return true;
         }
     }
 }

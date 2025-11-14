@@ -6,11 +6,9 @@
         xmlns:local="clr-namespace:QuanLyQuanBida.UI.Views"
         xmlns:viewmodels="clr-namespace:QuanLyQuanBida.UI.ViewModels"
         mc:Ignorable="d"
-        Title="Sao lưu & Phục hồi" Height="300" Width="500"
+        Title="Sao lưu và Phục hồi" Height="300" Width="500"
         WindowStartupLocation="CenterScreen">
-    <Window.DataContext>
-        <viewmodels:BackupViewModel/>
-    </Window.DataContext>
+
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>

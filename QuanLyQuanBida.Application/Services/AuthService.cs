@@ -8,51 +8,60 @@ namespace QuanLyQuanBida.Application.Services;
 
 public class AuthService : IAuthService
 {
-    private readonly QuanLyBidaDbContext _context;
+    private readonly IDbContextFactory<QuanLyBidaDbContext> _contextFactory;
+    private readonly IPermissionService _permissionService;
+    private readonly ICurrentUserService _currentUserService;
 
-    public AuthService(QuanLyBidaDbContext context)
+    public AuthService(
+        IDbContextFactory<QuanLyBidaDbContext> contextFactory,
+        IPermissionService permissionService,
+        ICurrentUserService currentUserService)
     {
-        _context = context;
+        _contextFactory = contextFactory; 
+        _permissionService = permissionService;
+        _currentUserService = currentUserService;
     }
 
     public async Task<User?> LoginAsync(string username, string password)
-
     {
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
         // 1. Tìm user trong database dựa trên username
-        var user = await _context.Users
-                                .Include(u => u.Role) // Lấy luôn thông tin Role
-                                .FirstOrDefaultAsync(u => u.Username == username);
+        var user = await context.Users
+            .Include(u => u.Role) 
+            .FirstOrDefaultAsync(u => u.Username == username);
 
         // 2. Nếu không tìm thấy user hoặc user đã bị vô hiệu hóa
         if (user == null || !user.IsActive)
         {
             return null;
         }
-
         // 3. Kiểm tra mật khẩu
-        // BCrypt.Verify(password, user.PasswordHash) sẽ so sánh mật khẩu người dùng nhập
-        // với chuỗi hash đã lưu trong database.
         if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
         {
             return null; // Mật khẩu không đúng
         }
-
-        // 4. Nếu mọi thứ đúng, trả về thông tin user
+ 
+        // 4. Tải quyền và lưu thông tin user vào service
+        _currentUserService.CurrentUser = user;
+        _currentUserService.Permissions = await _permissionService.GetPermissionsByRoleIdAsync(user.RoleId);
+        // 5. Trả về thông tin user
         return user;
     }
+
     public async Task<bool> CreateUserAsync(string username, string password, string fullName, int roleId)
     {
-        // Kiểm tra xem username đã tồn tại chưa
-        var existingUser = await _context.Users.FirstOrDefaultAsync(u => u.Username == username);
+        await using var context = await _contextFactory.CreateDbContextAsync();
+
+        var existingUser = await context.Users.FirstOrDefaultAsync(u => u.Username == username);
+
         if (existingUser != null)
         {
-            return false; // Username đã tồn tại
+            return false; 
         }
 
-        // Băm mật khẩu
         string passwordHash = BCrypt.Net.BCrypt.HashPassword(password);
 
-        // Tạo đối tượng user mới
         var newUser = new User
         {
             Username = username,
@@ -62,11 +71,8 @@ public class AuthService : IAuthService
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };
-
-        // Thêm vào database
-        _context.Users.Add(newUser);
-        await _context.SaveChangesAsync();
-
+        context.Users.Add(newUser);
+        await context.SaveChangesAsync();
         return true;
     }
 }

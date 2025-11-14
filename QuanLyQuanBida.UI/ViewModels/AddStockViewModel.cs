@@ -4,6 +4,7 @@ using QuanLyQuanBida.Core.Entities;
 using QuanLyQuanBida.Core.Interfaces;
 using System.Collections.ObjectModel;
 using System.Windows;
+using MessageBox = System.Windows.MessageBox;
 
 namespace QuanLyQuanBida.UI.ViewModels
 {
@@ -12,19 +13,15 @@ namespace QuanLyQuanBida.UI.ViewModels
         private readonly IProductService _productService;
         private readonly IInventoryService _inventoryService;
         private readonly ICurrentUserService _currentUserService;
-
+        public Action? CloseAction { get; set; }
         [ObservableProperty]
         private ObservableCollection<Product> _products = new();
-
         [ObservableProperty]
         private int _selectedProductId;
-
         [ObservableProperty]
-        private decimal _quantity;
-
+        private int _quantity;
         [ObservableProperty]
         private string _reference = string.Empty;
-
         public AddStockViewModel(
             IProductService productService,
             IInventoryService inventoryService,
@@ -33,22 +30,17 @@ namespace QuanLyQuanBida.UI.ViewModels
             _productService = productService;
             _inventoryService = inventoryService;
             _currentUserService = currentUserService;
-
             _ = LoadProductsAsync();
         }
-
         private async Task LoadProductsAsync()
         {
             Products.Clear();
-
             var productsFromDb = await _productService.GetAllProductsAsync();
-
             foreach (var product in productsFromDb)
             {
                 Products.Add(product);
             }
         }
-
         [RelayCommand]
         private async Task Save()
         {
@@ -57,20 +49,18 @@ namespace QuanLyQuanBida.UI.ViewModels
                 MessageBox.Show("Vui lòng chọn sản phẩm và nhập số lượng.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
-
             try
             {
-                var success = await _inventoryService.AddStockAsync(
+                var success = await _inventoryService.UpdateStockAsync(
                     SelectedProductId,
                     Quantity,
+                    "IN", 
                     Reference,
                     _currentUserService.CurrentUser?.Id ?? 0);
-
                 if (success)
                 {
                     MessageBox.Show("Nhập hàng thành công.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
-                    this.DialogResult = true;
-                    this.Close();
+                    this.CloseAction?.Invoke();
                 }
                 else
                 {
@@ -82,12 +72,10 @@ namespace QuanLyQuanBida.UI.ViewModels
                 MessageBox.Show($"Lỗi khi nhập hàng: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-
         [RelayCommand]
         private void Cancel()
         {
-            this.DialogResult = false;
-            this.Close();
+            CloseAction?.Invoke();
         }
     }
 }

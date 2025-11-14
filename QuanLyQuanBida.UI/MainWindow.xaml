@@ -15,57 +15,41 @@
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-
-        <!-- Menu Bar -->
         <Menu Grid.Row="0" Background="LightGray">
             <MenuItem Header="Hệ thống">
+                <MenuItem Header="Mở/Đóng Ca" Command="{Binding ShowShiftManagementCommand}"/>
+                <Separator/>
                 <MenuItem Header="Đăng xuất" Command="{Binding LogoutCommand}"/>
                 <MenuItem Header="Thoát" Command="{Binding ExitCommand}"/>
             </MenuItem>
-            <MenuItem Header="Quản lý">
-                <MenuItem Header="Người dùng" Command="{Binding ShowUserManagementCommand}"/>
-                <MenuItem Header="Sản phẩm" Command="{Binding ShowProductManagementCommand}"/>
-                <MenuItem Header="Khách hàng" Command="{Binding ShowCustomerManagementCommand}"/>
+            <MenuItem Header="Quản lý" Visibility="{Binding CanManageUsers, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <MenuItem Header="Người dùng" Command="{Binding ShowUserManagementCommand}"
+                          Visibility="{Binding CanManageUsers, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                <MenuItem Header="Sản phẩm" Command="{Binding ShowProductManagementCommand}"
+                          Visibility="{Binding CanManageProducts, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                <MenuItem Header="Khách hàng" Command="{Binding ShowCustomerManagementCommand}"
+                          Visibility="{Binding CanManageCustomers, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                <MenuItem Header="Tồn kho" Command="{Binding ShowInventoryManagementCommand}"
+                          Visibility="{Binding CanManageInventory, Converter={StaticResource BooleanToVisibilityConverter}}"/>
             </MenuItem>
-            <MenuItem Header="Báo cáo">
+            <MenuItem Header="Báo cáo" Visibility="{Binding CanViewReports, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <MenuItem Header="Xem báo cáo" Command="{Binding ShowReportsCommand}"/>
             </MenuItem>
-            <MenuItem Header="Cài đặt">
-                <MenuItem Header="Giá giờ" Command="{Binding ShowRateSettingsCommand}"/>
+
+            <MenuItem Header="Cài đặt" Visibility="{Binding CanManageSettings, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <MenuItem Header="Giá giờ" Command="{Binding ShowRateSettingsCommand}"
+                          Visibility="{Binding CanManageRates, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                 <MenuItem Header="Cấu hình hệ thống" Command="{Binding ShowSystemSettingsCommand}"/>
                 <MenuItem Header="Chủ đề">
                     <MenuItem Header="Sáng" Command="{Binding SetLightThemeCommand}"/>
                     <MenuItem Header="Tối" Command="{Binding SetDarkThemeCommand}"/>
                 </MenuItem>
-                <MenuItem Header="Hệ thống">
-                    <StatusBarItem>
-                        <TextBlock Text="{Binding CurrentUser.FullName, StringFormat='Người dùng: {0}'}"/>
-                    </StatusBarItem>
-                    <Separator/>
-                    <StatusBarItem>
-                        <TextBlock Text="{Binding Source={x:Static local:App.CurrentTime}, StringFormat='{}{0:HH:mm:ss dd/MM/yyyy}'}"/>
-                    </StatusBarItem>
-                </MenuItem>
             </MenuItem>
         </Menu>
-
-        <!-- Main Content -->
         <Grid Grid.Row="1">
-            <!-- ... existing content ... -->
         </Grid>
-
-        <!-- Status Bar -->
         <StatusBar Grid.Row="2" Background="LightGray">
-            <StatusBarItem>
-                <TextBlock Text="{Binding CurrentUser.FullName, StringFormat='Người dùng: {0}'}"/>
-            </StatusBarItem>
-            <Separator/>
-            <StatusBarItem>
-                <TextBlock Text="{Binding Source={x:Static local:App.CurrentTime}, StringFormat='{}{0:HH:mm:ss dd/MM/yyyy}'}"/>
-            </StatusBarItem>
         </StatusBar>
-
-        <!-- Loading Overlay -->
-        <controls:LoadingIndicator Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+        <controls:LoadingIndicator Grid.Row="0" Grid.RowSpan="3" Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"/>
     </Grid>
 </Window>

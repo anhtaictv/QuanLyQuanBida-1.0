@@ -7,6 +7,8 @@ using Microsoft.Win32;
 using System.IO;
 using System.Windows.Input;
 using QuanLyQuanBida.Core.DTOs;
+using MessageBox = System.Windows.MessageBox;
+using SaveFileDialog = Microsoft.Win32.SaveFileDialog;
 
 namespace QuanLyQuanBida.UI.ViewModels
 {

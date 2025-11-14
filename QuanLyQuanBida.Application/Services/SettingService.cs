@@ -3,24 +3,23 @@ using QuanLyQuanBida.Core.Interfaces;
 using QuanLyQuanBida.Infrastructure.Data.Context;
 using QuanLyQuanBida.Core.Entities;
 
-
 namespace QuanLyQuanBida.Application.Services
 {
     public class SettingService : ISettingService
     {
-        private readonly QuanLyBidaDbContext _context;
+        private readonly IDbContextFactory<QuanLyBidaDbContext> _contextFactory;
 
-        public SettingService(QuanLyBidaDbContext context)
+        public SettingService(IDbContextFactory<QuanLyBidaDbContext> contextFactory) 
         {
-            _context = context;
+            _contextFactory = contextFactory; 
         }
 
         public async Task<T> GetSettingAsync<T>(string key, T defaultValue = default)
         {
-            var setting = await _context.Settings.FindAsync(key);
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var setting = await context.Settings.FindAsync(key);
             if (setting == null)
                 return defaultValue;
-
             try
             {
                 return (T)Convert.ChangeType(setting.Value, typeof(T));
@@ -33,26 +32,26 @@ namespace QuanLyQuanBida.Application.Services
 
         public async Task<bool> SetSettingAsync<T>(string key, T value)
         {
-            var setting = await _context.Settings.FindAsync(key);
-
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var setting = await context.Settings.FindAsync(key);
             if (setting == null)
             {
                 setting = new Setting { Key = key, Value = value.ToString() };
-                _context.Settings.Add(setting);
+                context.Settings.Add(setting);
             }
             else
             {
                 setting.Value = value.ToString();
-                _context.Settings.Update(setting);
+                context.Settings.Update(setting);
             }
-
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
             return true;
         }
 
         public async Task<Dictionary<string, string>> GetAllSettingsAsync()
         {
-            var settings = await _context.Settings.ToListAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var settings = await context.Settings.ToListAsync();
             return settings.ToDictionary(s => s.Key, s => s.Value);
         }
     }

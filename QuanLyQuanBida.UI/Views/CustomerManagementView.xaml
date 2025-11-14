@@ -1,0 +1,79 @@
+﻿<Window x:Class="QuanLyQuanBida.UI.Views.CustomerManagementView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:QuanLyQuanBida.UI.Views"
+        mc:Ignorable="d"
+        Title="Quản lý Khách hàng" Height="600" Width="900"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="10">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="300"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Padding="10" BorderThickness="1" BorderBrush="LightGray" Margin="0,0,10,0">
+            <StackPanel>
+                <TextBlock Text="Thông tin khách hàng" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
+                
+                <Label Content="Tên khách hàng:"/>
+                <TextBox Text="{Binding CustomerForm.Name}" Height="25" Margin="0,0,0,10"/>
+
+                <Label Content="Số điện thoại:"/>
+                <TextBox Text="{Binding CustomerForm.Phone}" Height="25" Margin="0,0,0,10"/>
+
+                <Label Content="Địa chỉ:"/>
+                <TextBox Text="{Binding CustomerForm.Address}" Height="25" Margin="0,0,0,10"/>
+
+                <Label Content="Loại khách:"/>
+                <ComboBox SelectedItem="{Binding CustomerForm.Type}" Height="25" Margin="0,0,0,10">
+                    <ComboBoxItem Content="Walk-in"/>
+                    <ComboBoxItem Content="VIP"/>
+                </ComboBox>
+
+                <Label Content="Mã thẻ VIP:"/>
+                <TextBox Text="{Binding CustomerForm.VipCardNumber}" Height="25" Margin="0,0,0,10"/>
+
+                <StackPanel Orientation="Horizontal" Margin="0,15,0,0">
+                    <Button Content="Lưu" Width="80" Margin="0,0,5,0" Command="{Binding SaveCustomerCommand}"/>
+                    <Button Content="Hủy" Width="80" Command="{Binding AddNewCommand}"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            
+            <Button Grid.Row="0" Content="Thêm mới" Width="100" HorizontalAlignment="Left" Command="{Binding AddNewCommand}" Margin="0,0,0,10"/>
+            
+            <DataGrid Grid.Row="1" ItemsSource="{Binding Customers}" SelectedItem="{Binding SelectedCustomer}"
+                      AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="50"/>
+                    <DataGridTextColumn Header="Tên khách hàng" Binding="{Binding Name}" Width="*"/>
+                    <DataGridTextColumn Header="Điện thoại" Binding="{Binding Phone}" Width="120"/>
+                    <DataGridTextColumn Header="Loại" Binding="{Binding Type}" Width="80"/>
+                    <DataGridTextColumn Header="Điểm" Binding="{Binding Points}" Width="60"/>
+                    <DataGridTemplateColumn Header="Thao tác" Width="120">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="Sửa" Width="50" Margin="5"
+                                            Command="{Binding DataContext.EditCustomerCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"/>
+                                    <Button Content="Xóa" Width="50" Margin="5"
+                                            Command="{Binding DataContext.DeleteCustomerCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Grid>
+    </Grid>
+</Window>

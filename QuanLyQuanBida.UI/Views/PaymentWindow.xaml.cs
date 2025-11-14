@@ -7,16 +7,16 @@ namespace QuanLyQuanBida.UI.Views
 {
     public partial class PaymentWindow : Window
     {
-        public PaymentWindow(InvoiceDto invoice)
+        public PaymentWindow()
         {
             InitializeComponent();
 
             // Lấy ViewModel từ DI container
             var viewModel = App.Services.GetRequiredService<PaymentViewModel>();
-            viewModel.Invoice = invoice; // Truyền dữ liệu vào ViewModel
-
-            // Gán DataContext cho View
             this.DataContext = viewModel;
+
+            // Gán hành động đóng cửa sổ
+            viewModel.CloseAction = () => this.Close();
         }
     }
 }

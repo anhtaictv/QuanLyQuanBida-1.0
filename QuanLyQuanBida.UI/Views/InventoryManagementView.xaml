@@ -4,45 +4,61 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:QuanLyQuanBida.UI.Views"
-        xmlns:viewmodels="clr-namespace:QuanLyQuanBida.UI.ViewModels"
         mc:Ignorable="d"
-        Title="Quản lý Kho" Height="600" Width="900"
+        Title="Quản lý Tồn kho" Height="600" Width="900"
         WindowStartupLocation="CenterScreen">
-    <Window.DataContext>
-        <viewmodels:InventoryManagementViewModel/>
-    </Window.DataContext>
+
     <Grid Margin="10">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="300"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
 
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
-            <Button Content="Nhập hàng" Width="100" Command="{Binding AddStockCommand}"/>
-            <Button Content="Xuất hàng" Width="100" Margin="10,0,0,0" Command="{Binding RemoveStockCommand}"/>
-            <Button Content="Tồn kho thấp" Width="100" Margin="10,0,0,0" Command="{Binding ShowLowStockCommand}"/>
-        </StackPanel>
+        <Border Grid.Column="0" Padding="10" BorderThickness="1" BorderBrush="LightGray" Margin="0,0,10,0">
+            <StackPanel DataContext="{Binding AdjustmentForm}">
+                <TextBlock Text="Điều chỉnh Tồn kho" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
 
-        <DataGrid Grid.Row="1" AutoGenerateColumns="False" IsReadOnly="True" ItemsSource="{Binding Products}">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="50"/>
-                <DataGridTextColumn Header="Tên sản phẩm" Binding="{Binding Name}" Width="200"/>
-                <DataGridTextColumn Header="Số lượng" Binding="{Binding Quantity}" Width="100"/>
-                <DataGridTextColumn Header="Đơn vị" Binding="{Binding Unit}" Width="80"/>
-                <DataGridTextColumn Header="Danh mục" Binding="{Binding Category}" Width="120"/>
-                <DataGridCheckBoxColumn Header="Theo dõi tồn kho" Binding="{Binding IsInventoryTracked}" Width="120"/>
-                <DataGridTemplateColumn Header="Thao tác" Width="*">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
-                                <Button Content="Lịch sử" Width="60" Margin="0,0,5,0" 
-                                        Command="{Binding DataContext.ShowTransactionHistoryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                        CommandParameter="{Binding Id}"/>
-                            </StackPanel>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-            </DataGrid.Columns>
-        </DataGrid>
+                <Label Content="Chọn sản phẩm:"/>
+                <ComboBox ItemsSource="{Binding DataContext.TrackedProducts, RelativeSource={RelativeSource AncestorType=Window}}"
+                          SelectedValue="{Binding ProductId}"
+                          SelectedValuePath="Id"
+                          DisplayMemberPath="Name"
+                          Height="25" Margin="0,0,0,10"/>
+
+                <Label Content="Loại giao dịch:"/>
+                <ComboBox ItemsSource="{Binding DataContext.TransactionTypes, RelativeSource={RelativeSource AncestorType=Window}}"
+                          SelectedItem="{Binding TransactionType}"
+                          Height="25" Margin="0,0,0,10"/>
+
+                <Label Content="Số lượng:"/>
+                <TextBox Text="{Binding Quantity}" Height="25" Margin="0,0,0,10"/>
+
+                <Label Content="Ghi chú (Phiếu nhập/xuất):"/>
+                <TextBox Text="{Binding Reference}" Height="50" Margin="0,0,0,20"/>
+
+                <Button Content="XÁC NHẬN" Height="35" 
+                        Command="{Binding DataContext.AdjustStockCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+            </StackPanel>
+        </Border>
+
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Text="Tồn kho hiện tại" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
+
+            <DataGrid Grid.Row="1" ItemsSource="{Binding TrackedProducts}"
+                      AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="50"/>
+                    <DataGridTextColumn Header="Tên sản phẩm" Binding="{Binding Name}" Width="*"/>
+                    <DataGridTextColumn Header="Đơn vị" Binding="{Binding Unit}" Width="80"/>
+                    <DataGridTextColumn Header="Tồn kho" Binding="{Binding Quantity}" Width="80" FontWeight="Bold"/>
+                    <DataGridTextColumn Header="Danh mục" Binding="{Binding Category}" Width="100"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Grid>
     </Grid>
 </Window>

@@ -3,7 +3,8 @@ using CommunityToolkit.Mvvm.Input;
 using QuanLyQuanBida.Core.Interfaces;
 using System.IO;
 using System.Windows;
-using System.Windows.Forms; // Đã thêm reference
+using System.Windows.Forms;
+using MessageBox = System.Windows.MessageBox;
 
 namespace QuanLyQuanBida.UI.ViewModels
 {

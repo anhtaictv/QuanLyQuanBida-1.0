@@ -1,6 +1,6 @@
-﻿using System.Windows;
+﻿using Microsoft.Extensions.DependencyInjection;
 using QuanLyQuanBida.UI.ViewModels;
-using Microsoft.Extensions.DependencyInjection;
+using System.Windows;
 
 namespace QuanLyQuanBida.UI.Views
 {

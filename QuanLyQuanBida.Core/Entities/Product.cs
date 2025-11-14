@@ -26,4 +26,3 @@ public class Product
 
     public virtual ICollection<InventoryTransaction> InventoryTransactions { get; set; } = new List<InventoryTransaction>();
 }
-}

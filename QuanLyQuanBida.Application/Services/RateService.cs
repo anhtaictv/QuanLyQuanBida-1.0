@@ -7,57 +7,64 @@ namespace QuanLyQuanBida.Application.Services
 {
     public class RateService : IRateService
     {
-        private readonly QuanLyBidaDbContext _context;
 
-        public RateService(QuanLyBidaDbContext context)
+        private readonly IDbContextFactory<QuanLyBidaDbContext> _contextFactory;
+
+        public RateService(IDbContextFactory<QuanLyBidaDbContext> contextFactory) 
         {
-            _context = context;
+            _contextFactory = contextFactory;
         }
 
         public async Task<List<Rate>> GetAllRatesAsync()
         {
-            return await _context.Rates.ToListAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync(); 
+            return await context.Rates.ToListAsync();
         }
 
         public async Task<Rate?> GetRateByIdAsync(int id)
         {
-            return await _context.Rates.FindAsync(id);
+            await using var context = await _contextFactory.CreateDbContextAsync(); 
+            return await context.Rates.FindAsync(id);
         }
 
         public async Task<Rate?> GetApplicableRateAsync(DateTime dateTime)
         {
+            await using var context = await _contextFactory.CreateDbContextAsync();
             var time = TimeOnly.FromDateTime(dateTime);
             var isWeekend = dateTime.DayOfWeek == DayOfWeek.Saturday || dateTime.DayOfWeek == DayOfWeek.Sunday;
-
-            return await _context.Rates
+            return await context.Rates
                 .Where(r =>
-                    (r.StartTimeWindow <= time && r.EndTimeWindow >= time) &&
-                    (r.IsWeekendRate == isWeekend || !r.IsWeekendRate))
+                    (!r.StartTimeWindow.HasValue || r.StartTimeWindow <= time) && 
+                    (!r.EndTimeWindow.HasValue || r.EndTimeWindow >= time) && 
+                    (r.IsWeekendRate == isWeekend || !r.IsWeekendRate)) 
+                .OrderByDescending(r => r.IsDefault) 
                 .FirstOrDefaultAsync();
         }
 
         public async Task<Rate> CreateRateAsync(Rate rate)
         {
-            _context.Rates.Add(rate);
-            await _context.SaveChangesAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            context.Rates.Add(rate);
+            await context.SaveChangesAsync();
             return rate;
         }
 
         public async Task<bool> UpdateRateAsync(Rate rate)
         {
-            _context.Rates.Update(rate);
-            await _context.SaveChangesAsync();
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            context.Rates.Update(rate);
+            await context.SaveChangesAsync();
             return true;
         }
 
         public async Task<bool> DeleteRateAsync(int id)
         {
-            var rate = await _context.Rates.FindAsync(id);
+            await using var context = await _contextFactory.CreateDbContextAsync(); 
+            var rate = await context.Rates.FindAsync(id);
             if (rate == null)
                 return false;
-
-            _context.Rates.Remove(rate);
-            await _context.SaveChangesAsync();
+            context.Rates.Remove(rate);
+            await context.SaveChangesAsync();
             return true;
         }
     }

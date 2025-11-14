@@ -5,6 +5,7 @@ using QuanLyQuanBida.Core.DTOs;
 using System;
 using System.Threading.Tasks;
 using System.Windows;
+using MessageBox = System.Windows.MessageBox;
 
 namespace QuanLyQuanBida.UI.ViewModels
 {

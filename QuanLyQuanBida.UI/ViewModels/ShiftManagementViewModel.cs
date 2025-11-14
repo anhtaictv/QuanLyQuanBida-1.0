@@ -2,8 +2,9 @@
 using CommunityToolkit.Mvvm.Input;
 using QuanLyQuanBida.Core.Entities;
 using QuanLyQuanBida.Core.Interfaces;
-using System.Collections.ObjectModel;
 using System.Windows;
+using static Azure.Core.HttpHeader;
+using MessageBox = System.Windows.MessageBox;
 
 namespace QuanLyQuanBida.UI.ViewModels
 {
@@ -13,83 +14,81 @@ namespace QuanLyQuanBida.UI.ViewModels
         private readonly ICurrentUserService _currentUserService;
 
         [ObservableProperty]
-        private ObservableCollection<Shift> _shifts = new();
-
-        [ObservableProperty]
-        private DateTime? _startDate = DateTime.Today.AddDays(-30);
-
-        [ObservableProperty]
-        private DateTime? _endDate = DateTime.Today;
-
-        [ObservableProperty]
         private Shift? _currentShift;
 
-        public ShiftManagementViewModel(
-            IShiftService shiftService,
-            ICurrentUserService currentUserService)
+        [ObservableProperty]
+        private bool _isShiftOpen = false;
+
+        [ObservableProperty]
+        private decimal _openingCash;
+
+        [ObservableProperty]
+        private decimal _closingCash;
+
+        [ObservableProperty]
+        private string _notes = string.Empty;
+
+        // TODO: Cần 1 service để tính toán doanh thu trong ca
+        [ObservableProperty]
+        private decimal _cashRevenueInShift = 0;
+
+        public ShiftManagementViewModel(IShiftService shiftService, ICurrentUserService currentUserService)
         {
             _shiftService = shiftService;
             _currentUserService = currentUserService;
-
-            _ = LoadCurrentShiftAsync();
-            _ = LoadShiftHistoryAsync();
+            _ = LoadActiveShiftAsync();
         }
 
-        private async Task LoadCurrentShiftAsync()
+        private async Task LoadActiveShiftAsync()
         {
             if (_currentUserService.CurrentUser == null) return;
 
-            CurrentShift = await _shiftService.GetCurrentShiftAsync(_currentUserService.CurrentUser.Id);
-        }
+            CurrentShift = await _shiftService.GetActiveShiftByUserIdAsync(_currentUserService.CurrentUser.Id);
+            IsShiftOpen = (CurrentShift != null);
 
-        private async Task LoadShiftHistoryAsync()
-        {
-            if (_currentUserService.CurrentUser == null) return;
-
-            Shifts.Clear();
-
-            var shiftsFromDb = await _shiftService.GetShiftHistoryAsync(
-                _currentUserService.CurrentUser.Id,
-                StartDate,
-                EndDate);
-
-            foreach (var shift in shiftsFromDb)
+            if (IsShiftOpen)
             {
-                Shifts.Add(shift);
+                OpeningCash = CurrentShift.OpeningCash;
+                // TODO: Load revenue calculation here
             }
         }
 
         [RelayCommand]
-        private void OpenShift()
+        private async Task OpenShift()
         {
-            var openShiftWindow = new OpenShiftWindow();
-            if (openShiftWindow.ShowDialog() == true)
+            if (_currentUserService.CurrentUser == null) return;
+
+            var newShift = await _shiftService.OpenShiftAsync(_currentUserService.CurrentUser.Id, OpeningCash);
+            if (newShift != null)
             {
-                _ = LoadCurrentShiftAsync();
+                CurrentShift = newShift;
+                IsShiftOpen = true;
+                MessageBox.Show("Mở ca thành công!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                MessageBox.Show("Không thể mở ca. Có thể đã có ca đang hoạt động.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
         [RelayCommand]
-        private void CloseShift()
+        private async Task CloseShift()
         {
-            if (CurrentShift == null)
-            {
-                MessageBox.Show("Không có ca làm việc nào đang mở.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+            if (CurrentShift == null) return;
+
+            if (MessageBox.Show("Bạn có chắc chắn muốn đóng ca làm việc này?", "Xác nhận", MessageBoxButton.YesNo) != MessageBoxResult.Yes)
                 return;
-            }
 
-            var closeShiftWindow = new CloseShiftWindow(CurrentShift.Id);
-            if (closeShiftWindow.ShowDialog() == true)
+            var closedShift = await _shiftService.CloseShiftAsync(CurrentShift.Id, ClosingCash, Notes);
+            if (closedShift != null)
             {
-                _ = LoadCurrentShiftAsync();
-                _ = LoadShiftHistoryAsync();
+                IsShiftOpen = false;
+                CurrentShift = null;
+                OpeningCash = 0;
+                ClosingCash = 0;
+                Notes = string.Empty;
+                MessageBox.Show("Đóng ca thành công!", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
             }
-        }
-
-        [RelayCommand]
-        private async Task LoadShiftHistory()
-        {
-            await LoadShiftHistoryAsync();
         }
     }
 }

@@ -10,6 +10,8 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Linq;
 using System.Threading.Tasks;
+using System; // SỬA: Thêm using System (cần cho Exception)
+using MessageBox = System.Windows.MessageBox;
 
 namespace QuanLyQuanBida.UI.ViewModels;
 
@@ -44,10 +46,18 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private bool _isLoading = false;
 
-    // === THÊM MỚI: Thuộc tính CurrentUser để giao diện có thể bind vào ===
-    // Lỗi 'CurrentUser' property not found sẽ được khắc phục bởi thuộc tính này.
     [ObservableProperty]
     private User? _currentUser;
+
+    // === THÊM MỚI: Thuộc tính phân quyền (từ các bước trước) ===
+    public bool CanManageUsers => _currentUserService.HasPermission("ManageUsers");
+    public bool CanManageProducts => _currentUserService.HasPermission("ManageProducts");
+    public bool CanManageCustomers => _currentUserService.HasPermission("ManageCustomers");
+    public bool CanManageInventory => _currentUserService.HasPermission("ManageInventory");
+    public bool CanManageRates => _currentUserService.HasPermission("ManageRates");
+    public bool CanViewReports => _currentUserService.HasPermission("ViewReports");
+    public bool CanManageSettings => _currentUserService.HasPermission("ManageSettings");
+
 
     public MainWindowViewModel(
         ITableService tableService,
@@ -66,7 +76,6 @@ public partial class MainWindowViewModel : ObservableObject
         _billingService = billingService;
         _rateService = rateService;
 
-        // === THÊM MỚI: Lấy thông tin user từ dịch vụ khi khởi tạo ===
         _currentUser = _currentUserService.CurrentUser;
 
         _ = LoadDataAsync();
@@ -82,7 +91,6 @@ public partial class MainWindowViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            // Hiển thị lỗi ra Output hoặc MessageBox
             System.Diagnostics.Debug.WriteLine($"Error loading data: {ex.Message}");
             MessageBox.Show($"Không thể tải dữ liệu: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
         }
@@ -196,63 +204,97 @@ public partial class MainWindowViewModel : ObservableObject
             await LoadSessionForTableAsync(SelectedTable?.Id ?? 0);
     }
 
-    // === THÊM MỚI: Các lệnh còn thiếu mà giao diện đang tìm kiếm ===
-    // Các lỗi về '...Command' not found sẽ được khắc phục bởi các phương thức này.
+    // === CÁC LỆNH MỞ CỬA SỔ (ĐÃ SỬA LẠI TOÀN BỘ) ===
 
     [RelayCommand]
     private void ShowCustomerManagement()
     {
-        // TODO: Viết logic để mở cửa sổ Quản lý Khách hàng
-        MessageBox.Show("Mở cửa sổ Quản lý Khách hàng");
+        // Cách làm này (dùng App.Services) là ĐÚNG
+        var customerWindow = App.Services.GetRequiredService<CustomerManagementView>();
+        customerWindow.ShowDialog();
     }
 
     [RelayCommand]
     private void ShowRateSettings()
     {
-        // TODO: Viết logic để mở cửa sổ Cài đặt Giá giờ
-        MessageBox.Show("Mở cửa sổ Cài đặt Giá giờ");
+        // Cách làm này (dùng App.Services) là ĐÚNG
+        var rateSettingWindow = App.Services.GetRequiredService<RateSettingView>();
+        rateSettingWindow.ShowDialog();
     }
 
     [RelayCommand]
     private void ShowSystemSettings()
     {
-        // TODO: Viết logic để mở cửa sổ Cài đặt Hệ thống
-        MessageBox.Show("Mở cửa sổ Cài đặt Hệ thống");
+        // SỬA LỖI: Dùng App.Services
+        var backupWindow = App.Services.GetRequiredService<BackupWindow>();
+        backupWindow.ShowDialog();
     }
 
     [RelayCommand]
     private void SetLightTheme()
     {
-        // TODO: Viết logic để chuyển sang giao diện Sáng
-        MessageBox.Show("Chuyển sang giao diện Sáng");
+        MessageBox.Show("Chuyển sang giao diện Sáng [TODO]");
     }
 
     [RelayCommand]
     private void SetDarkTheme()
     {
-        // TODO: Viết logic để chuyển sang giao diện Tối
-        MessageBox.Show("Chuyển sang giao diện Tối");
+        MessageBox.Show("Chuyển sang giao diện Tối [TODO]");
     }
-
-    // === CÁC LỆNH CÓ SẴN CỦA BẠN ===
 
     [RelayCommand]
     private void ShowUserManagement()
     {
-        new UserManagementView().ShowDialog();
+        // SỬA LỖI: Không dùng 'new'
+        // new UserManagementView().ShowDialog(); 
+        var view = App.Services.GetRequiredService<UserManagementView>();
+        view.ShowDialog();
     }
 
     [RelayCommand]
     private void ShowProductManagement()
     {
-        new ProductManagementView().ShowDialog();
+        // SỬA LỖI: Không dùng 'new'
+        // new ProductManagementView().ShowDialog();
+        var view = App.Services.GetRequiredService<ProductManagementView>();
+        view.ShowDialog();
     }
 
     [RelayCommand]
     private void ShowReports()
     {
-        new ReportsView().ShowDialog();
+        // SỬA LỖI: Không dùng 'new'
+        // new ReportsView().ShowDialog();
+        var view = App.Services.GetRequiredService<ReportsView>();
+        view.ShowDialog();
     }
+
+    [RelayCommand]
+    private void ShowInventoryManagement()
+    {
+        var inventoryWindow = App.Services.GetRequiredService<InventoryManagementView>();
+        inventoryWindow.ShowDialog();
+    }
+
+    [RelayCommand]
+    private void ShowShiftManagement()
+    {
+        // SỬA LỖI: Không dùng 'new'
+        // var shiftView = new ShiftManagementView();
+        var shiftView = App.Services.GetRequiredService<ShiftManagementView>();
+        shiftView.ShowDialog();
+    }
+
+    [RelayCommand]
+    private void ShowBackupWindow()
+    {
+        // SỬA LỖI: Không dùng 'new'
+        // var backupWindow = new BackupWindow();
+        var backupWindow = App.Services.GetRequiredService<BackupWindow>();
+        backupWindow.ShowDialog();
+    }
+
+    // === CÁC LỆNH NGHIỆP VỤ KHÁC ===
 
     [RelayCommand]
     private async Task AddOrder(Product product)
@@ -284,7 +326,14 @@ public partial class MainWindowViewModel : ObservableObject
         if (closedSession != null)
         {
             var invoice = await _billingService.GenerateInvoiceAsync(CurrentSession.Id);
-            var paymentWindow = new PaymentWindow(invoice);
+
+            // SỬA LỖI: Phải lấy PaymentWindow từ DI
+            var paymentWindow = App.Services.GetRequiredService<PaymentWindow>();
+            // Truyền invoice DTO vào ViewModel của cửa sổ thanh toán
+            if (paymentWindow.DataContext is PaymentViewModel pvm)
+            {
+                pvm.Invoice = invoice;
+            }
             paymentWindow.ShowDialog();
 
             await LoadTablesAsync();
@@ -297,27 +346,22 @@ public partial class MainWindowViewModel : ObservableObject
     {
         if (MessageBox.Show("Bạn có chắc chắn muốn đăng xuất?", "Xác nhận", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
         {
-            if (App.Services.GetService(typeof(ICurrentUserService)) is ICurrentUserService currentUserService)
-                currentUserService.CurrentUser = null;
+            // SỬA LỖI: Dùng service đã được inject (an toàn hơn)
+            // if (App.Services.GetService(typeof(ICurrentUserService)) is ICurrentUserService currentUserService)
+            //     currentUserService.CurrentUser = null;
+            _currentUserService.CurrentUser = null;
+            _currentUserService.Permissions.Clear();
 
-            System.Windows.Application.Current.Windows.OfType<Window>().FirstOrDefault()?.Close();
+
+            // Đóng cửa sổ hiện tại (MainWindow)
+            // (Cách này an toàn hơn là FirstOrDefault)
+            var currentWindow = System.Windows.Application.Current.Windows.OfType<MainWindow>().FirstOrDefault();
+            currentWindow?.Close();
+
+            // Mở cửa sổ Login
             var loginView = App.Services.GetRequiredService<LoginView>();
             loginView.Show();
         }
-    }
-
-    [RelayCommand]
-    private void ShowInventoryManagement()
-    {
-        var inventoryView = new InventoryManagementView();
-        inventoryView.ShowDialog();
-    }
-
-    [RelayCommand]
-    private void ShowShiftManagement()
-    {
-        var shiftView = new ShiftManagementView();
-        shiftView.ShowDialog();
     }
 
     [RelayCommand]
@@ -326,10 +370,4 @@ public partial class MainWindowViewModel : ObservableObject
         System.Windows.Application.Current.Shutdown();
     }
 
-    [RelayCommand]
-    private void ShowBackupWindow()
-    {
-        var backupWindow = new BackupWindow();
-        backupWindow.ShowDialog();
-    }
 }

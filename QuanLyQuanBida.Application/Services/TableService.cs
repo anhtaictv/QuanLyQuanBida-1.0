@@ -6,18 +6,18 @@ using QuanLyQuanBida.Infrastructure.Data.Context;
 using TableEntity = QuanLyQuanBida.Core.Entities.Table;
 
 namespace QuanLyQuanBida.Application.Services;
-
 public class TableService : ITableService
 {
-    private readonly QuanLyBidaDbContext _context;
+    private readonly IDbContextFactory<QuanLyBidaDbContext> _contextFactory;
 
-    public TableService(QuanLyBidaDbContext context)
+    public TableService(IDbContextFactory<QuanLyBidaDbContext> contextFactory) 
     {
-        _context = context;
+        _contextFactory = contextFactory;
     }
 
     public async Task<List<TableEntity>> GetAllTablesAsync()
     {
-        return await _context.Tables.ToListAsync();
+        await using var context = await _contextFactory.CreateDbContextAsync();
+        return await context.Tables.ToListAsync();
     }
 }

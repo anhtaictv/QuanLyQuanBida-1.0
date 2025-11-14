@@ -7,16 +7,17 @@ namespace QuanLyQuanBida.Application.Services
 {
     public class ReportService : IReportService
     {
-        private readonly QuanLyBidaDbContext _context;
+        private readonly IDbContextFactory<QuanLyBidaDbContext> _contextFactory;
 
-        public ReportService(QuanLyBidaDbContext context)
+        public ReportService(IDbContextFactory<QuanLyBidaDbContext> contextFactory) 
         {
-            _context = context;
+            _contextFactory = contextFactory;
         }
 
         public async Task<List<RevenueByDayDto>> GetRevenueByDayAsync(DateTime startDate, DateTime endDate)
         {
-            return await _context.Invoices
+            await using var context = await _contextFactory.CreateDbContextAsync(); 
+            return await context.Invoices
                 .Where(i => i.CreatedAt.Date >= startDate.Date && i.CreatedAt.Date <= endDate.Date)
                 .GroupBy(i => i.CreatedAt.Date)
                 .Select(g => new RevenueByDayDto
@@ -31,7 +32,8 @@ namespace QuanLyQuanBida.Application.Services
 
         public async Task<List<RevenueByTableDto>> GetRevenueByTableAsync(DateTime startDate, DateTime endDate)
         {
-            return await _context.Invoices
+            await using var context = await _contextFactory.CreateDbContextAsync(); 
+            return await context.Invoices
                 .Include(i => i.Session.Table)
                 .Where(i => i.CreatedAt.Date >= startDate.Date && i.CreatedAt.Date <= endDate.Date)
                 .GroupBy(i => i.Session.Table)
@@ -41,7 +43,7 @@ namespace QuanLyQuanBida.Application.Services
                     TableName = g.Key.Name,
                     Revenue = g.Sum(i => i.Total),
                     SessionsCount = g.Count(),
-                    UtilizationRate = 0 // Will be calculated separately
+                    UtilizationRate = 0 
                 })
                 .OrderByDescending(r => r.Revenue)
                 .ToListAsync();
@@ -49,7 +51,8 @@ namespace QuanLyQuanBida.Application.Services
 
         public async Task<List<RevenueByProductDto>> GetRevenueByProductAsync(DateTime startDate, DateTime endDate)
         {
-            return await _context.Orders
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.Orders
                 .Include(o => o.Product)
                 .Include(o => o.Session)
                 .Where(o => o.Session.StartAt.Date >= startDate.Date && o.Session.StartAt.Date <= endDate.Date)
@@ -67,22 +70,22 @@ namespace QuanLyQuanBida.Application.Services
 
         public async Task<List<CustomerDebtDto>> GetCustomerDebtsAsync()
         {
-            // Assuming debt is tracked in a separate table or as a field in Customer/Invoice
-            // For now, we'll return an empty list as this feature needs more specification
+            await using var context = await _contextFactory.CreateDbContextAsync(); 
             return await Task.FromResult(new List<CustomerDebtDto>());
         }
 
         public async Task<List<InventoryReportDto>> GetInventoryReportAsync()
         {
-            return await _context.Products
+            await using var context = await _contextFactory.CreateDbContextAsync(); 
+            return await context.Products
                 .Where(p => p.IsInventoryTracked)
                 .Select(p => new InventoryReportDto
                 {
                     ProductName = p.Name,
                     Category = p.Category,
-                    CurrentStock = 0, // Will be calculated from InventoryTransactions
-                    MinStock = 10, // Default min stock, should be a setting
-                    IsLowStock = false // Will be calculated
+                    CurrentStock = p.Quantity, 
+                    MinStock = 10, 
+                    IsLowStock = p.Quantity <= 10 
                 })
                 .ToListAsync();
         }

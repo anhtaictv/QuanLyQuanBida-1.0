@@ -1,6 +1,6 @@
-﻿using System.Windows;
+﻿using Microsoft.Extensions.DependencyInjection;
 using QuanLyQuanBida.UI.ViewModels;
-using Microsoft.Extensions.DependencyInjection;
+using System.Windows;
 
 namespace QuanLyQuanBida.UI.Views
 {
@@ -9,6 +9,7 @@ namespace QuanLyQuanBida.UI.Views
         public BackupWindow()
         {
             InitializeComponent();
+            // Dòng này sẽ thay thế cho khối XAML bạn vừa xóa:
             this.DataContext = App.Services.GetRequiredService<BackupViewModel>();
         }
     }

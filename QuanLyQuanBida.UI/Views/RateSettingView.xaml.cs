@@ -4,12 +4,12 @@ using System.Windows;
 
 namespace QuanLyQuanBida.UI.Views
 {
-    public partial class InventoryManagementView : Window
+    public partial class RateSettingView : Window
     {
-        public InventoryManagementView()
+        public RateSettingView()
         {
             InitializeComponent();
-            this.DataContext = App.Services.GetRequiredService<InventoryManagementViewModel>();
+            this.DataContext = App.Services.GetRequiredService<RateSettingViewModel>();
         }
     }
 }

@@ -1,12 +1,19 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using QuanLyQuanBida.Core.DTOs;
 using QuanLyQuanBida.Core.Entities;
 using QuanLyQuanBida.Core.Interfaces;
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Data;
 using System.Windows;
 using System.Windows.Input;
 using QuanLyQuanBida.Core.DTOs;
+using System; 
+using System.Threading.Tasks; 
+using System.Collections.Generic; 
+using System.Linq;
+using MessageBox = System.Windows.MessageBox;
 
 namespace QuanLyQuanBida.UI.ViewModels
 {
@@ -14,60 +21,65 @@ namespace QuanLyQuanBida.UI.ViewModels
     {
         private readonly IAuthService _authService;
         private readonly ICurrentUserService _currentUserService;
+        private readonly IRoleService _roleService;
+        private readonly IAuditService _auditService;
+        private readonly IUserService _userService; 
 
         [ObservableProperty]
         private ObservableCollection<User> _users = new();
-
         [ObservableProperty]
         private ObservableCollection<Role> _roles = new();
-
         [ObservableProperty]
         private User? _selectedUser;
-
         [ObservableProperty]
         private UserDto _userForm = new();
-
         [ObservableProperty]
         private string _searchText = string.Empty;
-
         [ObservableProperty]
         private bool _isEditing = false;
 
-        public UserManagementViewModel(IAuthService authService, ICurrentUserService currentUserService)
+        public UserManagementViewModel(
+            IAuthService authService,
+            ICurrentUserService currentUserService,
+            IRoleService roleService,
+            IAuditService auditService,
+            IUserService userService) 
         {
             _authService = authService ?? throw new ArgumentNullException(nameof(authService));
             _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
-
+            _roleService = roleService;
+            _auditService = auditService;
+            _userService = userService; 
             _ = LoadDataAsync();
         }
-
         private async Task LoadDataAsync()
         {
             await LoadUsersAsync();
             await LoadRolesAsync();
         }
+        private async Task LoadRolesAsync()
+        {
+            Roles.Clear();
+            var rolesFromDb = await _roleService.GetAllRolesAsync();
+            foreach (var role in rolesFromDb)
+            {
+                Roles.Add(role);
+            }
+        }
 
         private async Task LoadUsersAsync()
         {
             Users.Clear();
+            var usersFromDb = await _userService.GetAllUsersAsync();
 
-            var usersFromDb = await Task.FromResult(new List<User>());
+            var filteredList = string.IsNullOrWhiteSpace(SearchText)
+                ? usersFromDb
+                : usersFromDb.Where(u => u.Username.Contains(SearchText, StringComparison.OrdinalIgnoreCase) ||
+                                         (u.FullName != null && u.FullName.Contains(SearchText, StringComparison.OrdinalIgnoreCase)));
 
-            foreach (var user in usersFromDb)
+            foreach (var user in filteredList)
             {
                 Users.Add(user);
-            }
-        }
-
-        private async Task LoadRolesAsync()
-        {
-            Roles.Clear();
-
-            var rolesFromDb = await Task.FromResult(new List<Role>());
-
-            foreach (var role in rolesFromDb)
-            {
-                Roles.Add(role);
             }
         }
 
@@ -76,20 +88,17 @@ namespace QuanLyQuanBida.UI.ViewModels
         {
             await LoadUsersAsync();
         }
-
         [RelayCommand]
         private void AddNew()
         {
             SelectedUser = null;
-            UserForm = new UserDto();
+            UserForm = new UserDto() { RoleId = 4, IsActive = true };
             IsEditing = false;
         }
-
         [RelayCommand]
         private void EditUser(User user)
         {
             if (user == null) return;
-
             SelectedUser = user;
             UserForm = new UserDto
             {
@@ -107,66 +116,106 @@ namespace QuanLyQuanBida.UI.ViewModels
         private async Task SaveUser()
         {
             if (string.IsNullOrWhiteSpace(UserForm.Username) ||
-                string.IsNullOrWhiteSpace(UserForm.Password) && !IsEditing)
+                (string.IsNullOrWhiteSpace(UserForm.Password) && !IsEditing))
             {
-                MessageBox.Show("Vui lòng điền đầy đủ thông tin bắt buộc.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("Vui lòng điền đầy đủ Tên đăng nhập (và Mật khẩu cho người dùng mới).", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
+
+            bool success = false;
+            string action = "UPDATE_USER";
+            int? targetId = UserForm.Id;
+            string oldValue = null;
 
             try
             {
                 if (IsEditing)
                 {
+
+                    var existing = await _userService.GetUserByIdAsync(UserForm.Id);
+                    oldValue = $"Username: {existing.Username}, Role: {existing.RoleId}";
+
+                    success = await _userService.UpdateUserAsync(UserForm);
+                    if (!success)
+                    {
+                        MessageBox.Show("Cập nhật thất bại. Tên đăng nhập có thể đã tồn tại.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
                 }
                 else
                 {
-                    var success = await _authService.CreateUserAsync(
+                    action = "CREATE_USER";
+                    success = await _authService.CreateUserAsync(
                         UserForm.Username,
                         UserForm.Password,
                         UserForm.FullName,
                         UserForm.RoleId);
-
                     if (!success)
                     {
                         MessageBox.Show("Tên đăng nhập đã tồn tại.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
                         return;
                     }
+                    targetId = null;
                 }
 
-                MessageBox.Show("Lưu thông tin người dùng thành công.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
-                await LoadUsersAsync();
-                AddNew(); // Reset form
+                if (success)
+                {
+                    await _auditService.LogActionAsync(
+                        _currentUserService.CurrentUser?.Id ?? 0,
+                        action,
+                        "Users",
+                        targetId,
+                        oldValue,
+                        newValue: $"Username: {UserForm.Username}, RoleId: {UserForm.RoleId}");
+
+                    MessageBox.Show("Lưu thông tin người dùng thành công.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+                    await LoadUsersAsync();
+                    AddNew();
+                }
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Lỗi khi lưu thông tin người dùng: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-        public UserManagementViewModel()
-        {
-            _authService = null!;
-            _currentUserService = null!;
-        }
 
         [RelayCommand]
         private void Cancel()
         {
-            AddNew(); // Reset form
+            AddNew();
         }
-
         [RelayCommand]
         private async Task DeleteUser(User user)
         {
             if (user == null) return;
+            if (user.Username == "admin")
+            {
+                MessageBox.Show("Không thể xóa tài khoản Administrator.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
 
             if (MessageBox.Show($"Bạn có chắc chắn muốn xóa người dùng '{user.Username}'?", "Xác nhận",
                 MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
             {
                 try
                 {
-                    // Implement delete logic
-                    await LoadUsersAsync();
-                    MessageBox.Show("Xóa người dùng thành công.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+                    bool success = await _userService.DeleteUserAsync(user.Id);
+                    if (success)
+                    {
+                        await _auditService.LogActionAsync(
+                            _currentUserService.CurrentUser?.Id ?? 0,
+                            "DELETE_USER",
+                            "Users",
+                            user.Id,
+                            oldValue: $"Username: {user.Username}");
+
+                        await LoadUsersAsync();
+                        MessageBox.Show("Xóa người dùng thành công.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Xóa người dùng thất bại.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -174,16 +223,5 @@ namespace QuanLyQuanBida.UI.ViewModels
                 }
             }
         }
-    }
-
-    public class UserDto
-    {
-        public int Id { get; set; }
-        public string Username { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
-        public string FullName { get; set; } = string.Empty;
-        public string? Phone { get; set; }
-        public int RoleId { get; set; }
-        public bool IsActive { get; set; } = true;
     }
 }

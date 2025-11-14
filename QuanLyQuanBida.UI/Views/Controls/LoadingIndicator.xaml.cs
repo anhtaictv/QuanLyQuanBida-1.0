@@ -2,7 +2,7 @@
 
 namespace QuanLyQuanBida.UI.Views.Controls
 {
-    public partial class LoadingIndicator : UserControl
+    public partial class LoadingIndicator : System.Windows.Controls.UserControl
     {
         public LoadingIndicator()
         {

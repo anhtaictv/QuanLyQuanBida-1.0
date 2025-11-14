@@ -1,4 +1,9 @@
-﻿using QuanLyQuanBida.Core.Interfaces;
+﻿using Microsoft.EntityFrameworkCore;
+using QuanLyQuanBida.Core.DTOs;
+using QuanLyQuanBida.Core.Entities;
+using QuanLyQuanBida.Core.Interfaces;
+using QuanLyQuanBida.Infrastructure.Data.Context;
+using QuanLyQuanBida.Core.Interfaces;
 using QuanLyQuanBida.Infrastructure.Data.Context;
 using System;
 using System.Collections.Generic;
@@ -9,56 +14,74 @@ using QuanLyQuanBida.Core.DTOs;
 using QuanLyQuanBida.Core.Entities;
 using Microsoft.EntityFrameworkCore;
 
-
 namespace QuanLyQuanBida.Application.Services
 {
     public class BillingService : IBillingService
     {
-        private readonly QuanLyBidaDbContext _context;
-        private readonly ISettingService _settingService; // We need to create this
 
-        public BillingService(QuanLyBidaDbContext context, ISettingService settingService)
+        private readonly IDbContextFactory<QuanLyBidaDbContext> _contextFactory;
+        private readonly ISettingService _settingService;
+        private readonly IRateService _rateService;
+        private readonly ICustomerService _customerService;
+
+        public BillingService(
+            IDbContextFactory<QuanLyBidaDbContext> contextFactory, 
+            ISettingService settingService,
+            IRateService rateService,
+            ICustomerService customerService)
         {
-            _context = context;
+            _contextFactory = contextFactory; 
             _settingService = settingService;
+            _rateService = rateService;
+            _customerService = customerService;
         }
 
         public async Task<InvoiceDto> GenerateInvoiceAsync(int sessionId)
         {
-            var session = await _context.Sessions
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var session = await context.Sessions
                 .Include(s => s.Table)
                 .Include(s => s.Orders)
-                .ThenInclude(o => o.Product)
-                .Include(s => s.UserOpen)
+                    .ThenInclude(o => o.Product) 
+                .Include(s => s.Customer)
                 .FirstOrDefaultAsync(s => s.Id == sessionId);
 
-            if (session == null)
-            {
-                throw new ArgumentException("Session not found");
-            }
+            if (session == null || !session.EndAt.HasValue) throw new ArgumentException("Session is not closed.");
 
-            // Get rate for the session
-            var rate = await GetApplicableRateAsync(session.StartAt);
+            // 1. Tính toán Giờ chơi và Tiền giờ
+            var rate = await _rateService.GetApplicableRateAsync(session.StartAt)
+                ?? new Rate { PricePerHour = 100000 };
+            int roundingRule = await _settingService.GetSettingAsync<int>("TimeRoundingMinutes", 1);
+            decimal timeCharge = CalculateTimeCharge(session.TotalMinutes, rate.PricePerHour, roundingRule);
 
-            // Calculate time charge
-            decimal timeCharge = CalculateTimeCharge(session.TotalMinutes, rate.PricePerHour);
-
-            // Calculate order total
+            // 2. Tính tổng Order
             decimal orderTotal = session.Orders.Sum(o => o.Price * o.Quantity);
 
-            // Get settings
-            var taxRate = await _settingService.GetSettingAsync<decimal>("TaxRate", 0.1m); // 10% default
-            var serviceFeeRate = await _settingService.GetSettingAsync<decimal>("ServiceFeeRate", 0.05m); // 5% default
-
-            // Calculate subtotal
+            // 3. Tính Subtotal
             decimal subtotal = timeCharge + orderTotal;
 
-            // Calculate tax and service fee
-            decimal tax = subtotal * taxRate;
-            decimal serviceFee = subtotal * serviceFeeRate;
+            // 4. Áp dụng Discount
+            decimal discountRate = 0m;
+            if (session.CustomerId.HasValue)
+            {
+                var customer = await _customerService.GetCustomerByIdAsync(session.CustomerId.Value);
+                if (customer != null && customer.Type == "VIP")
+                {
+                    discountRate = await _settingService.GetSettingAsync<decimal>($"VipDiscountRate_{customer.VipCardNumber}", 0.05m);
+                }
+            }
+            decimal discount = subtotal * discountRate;
 
-            // Calculate total
-            decimal total = subtotal + tax + serviceFee;
+            // 5. Tính Thuế và Phí Dịch vụ
+            var taxRate = await _settingService.GetSettingAsync<decimal>("TaxRate", 0.1m);
+            var serviceFeeRate = await _settingService.GetSettingAsync<decimal>("ServiceFeeRate", 0.05m);
+            decimal totalAfterDiscount = subtotal - discount;
+            decimal tax = totalAfterDiscount * taxRate;
+            decimal serviceFee = totalAfterDiscount * serviceFeeRate;
+
+            // 6. Tính Total
+            decimal total = totalAfterDiscount + tax + serviceFee;
 
             // Create invoice
             var invoice = new Invoice
@@ -68,7 +91,7 @@ namespace QuanLyQuanBida.Application.Services
                 SubTotal = subtotal,
                 Tax = tax,
                 ServiceFee = serviceFee,
-                Discount = 0, // We'll implement discount later
+                Discount = discount,
                 Total = total,
                 PaidAmount = 0,
                 PaymentMethod = "Pending",
@@ -76,8 +99,8 @@ namespace QuanLyQuanBida.Application.Services
                 CreatedAt = DateTime.UtcNow
             };
 
-            _context.Invoices.Add(invoice);
-            await _context.SaveChangesAsync();
+            context.Invoices.Add(invoice);
+            await context.SaveChangesAsync();
 
             // Return DTO
             return new InvoiceDto
@@ -93,18 +116,28 @@ namespace QuanLyQuanBida.Application.Services
                 SubTotal = subtotal,
                 Tax = tax,
                 ServiceFee = serviceFee,
-                Total = total
+                Discount = discount,
+                Total = total,
+                Orders = session.Orders.Select(o => new OrderDto
+                {
+                    Id = o.Id,
+                    ProductId = o.ProductId,
+                    ProductName = o.Product.Name,
+                    Quantity = o.Quantity,
+                    Price = o.Price
+                }).ToList()
             };
         }
 
         public async Task<bool> ProcessPaymentAsync(int invoiceId, PaymentDto payment)
         {
-            var invoice = await _context.Invoices.FindAsync(invoiceId);
+            await using var context = await _contextFactory.CreateDbContextAsync(); // SỬA
+
+            var invoice = await context.Invoices.FindAsync(invoiceId);
             if (invoice == null)
             {
                 return false;
             }
-
             // Create payment record
             var paymentRecord = new Payment
             {
@@ -114,47 +147,35 @@ namespace QuanLyQuanBida.Application.Services
                 TransactionRef = payment.TransactionRef,
                 CreatedAt = DateTime.UtcNow
             };
-
-            _context.Payments.Add(paymentRecord);
-
+            context.Payments.Add(paymentRecord);
             // Update invoice
             invoice.PaidAmount += payment.Amount;
             invoice.PaymentMethod = payment.Method;
-
             // Mark as fully paid if applicable
             if (invoice.PaidAmount >= invoice.Total)
             {
                 invoice.PaymentMethod = "Paid";
             }
-
-            await _context.SaveChangesAsync();
+            await context.SaveChangesAsync();
             return true;
         }
 
-        private async Task<Rate> GetApplicableRateAsync(DateTime dateTime)
+        private decimal CalculateTimeCharge(int totalMinutes, decimal pricePerHour, int roundingRuleMinutes)
         {
-            var time = TimeOnly.FromDateTime(dateTime);
-            var isWeekend = dateTime.DayOfWeek == DayOfWeek.Saturday || dateTime.DayOfWeek == DayOfWeek.Sunday;
 
-            return await _context.Rates
-                .Where(r =>
-                    (r.StartTimeWindow <= time && r.EndTimeWindow >= time) &&
-                    (r.IsWeekendRate == isWeekend || !r.IsWeekendRate))
-                .FirstOrDefaultAsync() ?? new Rate { PricePerHour = 100 }; // Default rate
-        }
-
-        private decimal CalculateTimeCharge(int totalMinutes, decimal pricePerHour)
-        {
-            // Convert to hours and calculate
-            decimal hours = totalMinutes / 60.0m;
-            return hours * pricePerHour;
+            if (totalMinutes <= 0) return 0m;
+            decimal minutesToBill = totalMinutes;
+            if (roundingRuleMinutes > 1)
+            {
+                minutesToBill = Math.Ceiling((decimal)totalMinutes / roundingRuleMinutes) * roundingRuleMinutes;
+            }
+            decimal pricePerMinute = pricePerHour / 60m;
+            return minutesToBill * pricePerMinute;
         }
 
         private string GenerateInvoiceNumber()
         {
-            // Format: INV + YYYYMMDD + 4-digit sequence
             return $"INV{DateTime.Now:yyyyMMdd}{new Random().Next(1000, 9999)}";
         }
     }
-
 }

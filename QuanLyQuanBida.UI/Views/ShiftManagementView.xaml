@@ -6,44 +6,39 @@
         xmlns:local="clr-namespace:QuanLyQuanBida.UI.Views"
         xmlns:viewmodels="clr-namespace:QuanLyQuanBida.UI.ViewModels"
         mc:Ignorable="d"
-        Title="Quản lý Ca làm việc" Height="600" Width="900"
+        Title="Quản lý Ca làm việc" Height="450" Width="400"
         WindowStartupLocation="CenterScreen">
-    <Window.DataContext>
-        <viewmodels:ShiftManagementViewModel/>
-    </Window.DataContext>
-    <Grid Margin="10">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
 
-        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
-            <Button Content="Mở ca" Width="100" Command="{Binding OpenShiftCommand}"/>
-            <Button Content="Đóng ca" Width="100" Margin="10,0,0,0" Command="{Binding CloseShiftCommand}"/>
-        </StackPanel>
+	<Grid Margin="20">
+		<StackPanel Visibility="{Binding IsShiftOpen, Converter={StaticResource InverseBooleanConverter}}">
+			<TextBlock Text="MỞ CA LÀM VIỆC" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,20"/>
+			<Label Content="Người dùng:"/>
+			<TextBox Text="{Binding DataContext.CurrentUser.FullName, RelativeSource={RelativeSource AncestorType=Window}}" IsReadOnly="True" Height="25" Margin="0,0,0,10"/>
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
-            <TextBlock Text="Từ ngày:" VerticalAlignment="Center" Margin="0,0,5,0"/>
-            <DatePicker Width="120" Height="25" SelectedDate="{Binding StartDate}"/>
+			<Label Content="Tiền mặt đầu ca:"/>
+			<TextBox Text="{Binding OpeningCash, StringFormat='{}{0:N0}'}" Height="25" Margin="0,0,0,20"/>
 
-            <TextBlock Text="Đến ngày:" VerticalAlignment="Center" Margin="20,0,5,0"/>
-            <DatePicker Width="120" Height="25" SelectedDate="{Binding EndDate}"/>
+			<Button Content="MỞ CA" Height="40" Command="{Binding OpenShiftCommand}"/>
+		</StackPanel>
 
-            <Button Content="Xem lịch sử" Width="100" Margin="20,0,0,0" Command="{Binding LoadShiftHistoryCommand}"/>
-        </StackPanel>
+		<StackPanel Visibility="{Binding IsShiftOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+			<TextBlock Text="ĐÓNG CA LÀM VIỆC" FontSize="20" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,0,0,20"/>
+			<Label Content="Ca bắt đầu lúc:"/>
+			<TextBox Text="{Binding CurrentShift.StartAt, StringFormat='{}{0:HH:mm dd/MM/yyyy}'}" IsReadOnly="True" Height="25" Margin="0,0,0,10"/>
 
-        <DataGrid Grid.Row="2" AutoGenerateColumns="False" IsReadOnly="True" ItemsSource="{Binding Shifts}">
-            <DataGrid.Columns>
-                <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="50"/>
-                <DataGridTextColumn Header="Nhân viên" Binding="{Binding User.FullName}" Width="150"/>
-                <DataGridTextColumn Header="Bắt đầu" Binding="{Binding StartAt, StringFormat='dd/MM/yyyy HH:mm'}" Width="150"/>
-                <DataGridTextColumn Header="Kết thúc" Binding="{Binding EndAt, StringFormat='dd/MM/yyyy HH:mm'}" Width="150"/>
-                <DataGridTextColumn Header="Tiền mặt đầu ca" Binding="{Binding OpeningCash, StringFormat='{}{0:N0}'}" Width="120"/>
-                <DataGridTextColumn Header="Tiền mặt cuối ca" Binding="{Binding ClosingCash, StringFormat='{}{0:N0}'}" Width="120"/>
-                <DataGridTextColumn Header="Chênh lệch" Binding="{Binding Difference, StringFormat='{}{0:N0}'}" Width="120"/>
-                <DataGridTextColumn Header="Ghi chú" Binding="{Binding Notes}" Width="*"/>
-            </DataGrid.Columns>
-        </DataGrid>
-    </Grid>
+			<Label Content="Tiền mặt đầu ca:"/>
+			<TextBox Text="{Binding OpeningCash, StringFormat='{}{0:N0}'}" IsReadOnly="True" Height="25" Margin="0,0,0,10"/>
+
+			<Label Content="Doanh thu tiền mặt (tạm tính):"/>
+			<TextBox Text="{Binding CashRevenueInShift, StringFormat='{}{0:N0}'}" IsReadOnly="True" Height="25" Margin="0,0,0,10"/>
+
+			<Label Content="Tiền mặt cuối ca (thực tế):"/>
+			<TextBox Text="{Binding ClosingCash, StringFormat='{}{0:N0}'}" Height="25" Margin="0,0,0,10"/>
+
+			<Label Content="Ghi chú:"/>
+			<TextBox Text="{Binding Notes}" Height="50" TextWrapping="Wrap" Margin="0,0,0,20"/>
+
+			<Button Content="ĐÓNG CA" Height="40" Command="{Binding CloseShiftCommand}" Background="OrangeRed"/>
+		</StackPanel>
+	</Grid>
 </Window>

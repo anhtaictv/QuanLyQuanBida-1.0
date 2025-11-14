@@ -1,12 +1,12 @@
 ﻿using QuanLyQuanBida.Core.Entities;
+using QuanLyQuanBida.Core.DTOs; // Cần tạo ShiftDto
 
 namespace QuanLyQuanBida.Core.Interfaces
 {
     public interface IShiftService
     {
         Task<Shift?> OpenShiftAsync(int userId, decimal openingCash);
-        Task<bool> CloseShiftAsync(int shiftId, decimal closingCash, string notes);
-        Task<Shift?> GetCurrentShiftAsync(int userId);
-        Task<List<Shift>> GetShiftHistoryAsync(int userId, DateTime? startDate, DateTime? endDate);
+        Task<Shift?> CloseShiftAsync(int shiftId, decimal closingCash, string notes);
+        Task<Shift?> GetActiveShiftByUserIdAsync(int userId);
     }
 }
