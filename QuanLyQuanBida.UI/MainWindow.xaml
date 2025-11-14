@@ -6,15 +6,34 @@
         xmlns:local="clr-namespace:QuanLyQuanBida.UI"
         xmlns:controls="clr-namespace:QuanLyQuanBida.UI.Views.Controls"
         xmlns:converters="clr-namespace:QuanLyQuanBida.UI.Converters"
+        xmlns:entities="clr-namespace:QuanLyQuanBida.Core.Entities;assembly=QuanLyQuanBida.Core"
         mc:Ignorable="d"
         Title="Quản lý Quán Bida" Height="720" Width="1280"
         WindowState="Maximized">
+
+    <Window.Resources>
+        <local:TableStatusToBrushConverter x:Key="StatusToBrushConverter"/>
+        <local:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+
+        <Style x:Key="TableCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{Binding Status, Converter={StaticResource StatusToBrushConverter}}"/>
+            <Setter Property="BorderBrush" Value="Gray"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="5"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Height" Value="100"/>
+            <Setter Property="Width" Value="120"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+    </Window.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
+
         <Menu Grid.Row="0" Background="LightGray">
             <MenuItem Header="Hệ thống">
                 <MenuItem Header="Mở/Đóng Ca" Command="{Binding ShowShiftManagementCommand}"/>
@@ -35,21 +54,132 @@
             <MenuItem Header="Báo cáo" Visibility="{Binding CanViewReports, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <MenuItem Header="Xem báo cáo" Command="{Binding ShowReportsCommand}"/>
             </MenuItem>
-
             <MenuItem Header="Cài đặt" Visibility="{Binding CanManageSettings, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <MenuItem Header="Giá giờ" Command="{Binding ShowRateSettingsCommand}"
                           Visibility="{Binding CanManageRates, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                <MenuItem Header="Cấu hình hệ thống" Command="{Binding ShowSystemSettingsCommand}"/>
+                <MenuItem Header="Cấu hình hệ thống" Command="{Binding ShowBackupWindow}"/>
                 <MenuItem Header="Chủ đề">
                     <MenuItem Header="Sáng" Command="{Binding SetLightThemeCommand}"/>
                     <MenuItem Header="Tối" Command="{Binding SetDarkThemeCommand}"/>
                 </MenuItem>
             </MenuItem>
         </Menu>
+
         <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="1*"/>
+            </Grid.ColumnDefinitions>
+
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <TextBlock Text="SƠ ĐỒ BÀN" FontSize="16" FontWeight="Bold" Margin="10,5"/>
+                <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Tables}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type entities:Table}">
+                                <Border Style="{StaticResource TableCardStyle}">
+                                    <Border.InputBindings>
+                                        <MouseBinding Gesture="LeftClick" 
+                                                      Command="{Binding DataContext.SelectTableCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                      CommandParameter="{Binding}"/>
+                                    </Border.InputBindings>
+                                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="{Binding Status}" FontSize="12" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="{Binding CurrentSession.ElapsedTime, StringFormat='HH:mm:ss'}" 
+                                                   Visibility="{Binding IsSessionActive, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch"/>
+
+            <Grid Grid.Column="2" Margin="5">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="2*"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Text="CHI TIẾT PHIÊN" FontSize="16" FontWeight="Bold" Margin="5"/>
+                <Grid Grid.Row="1" DataContext="{Binding SelectedTable}" Visibility="{Binding ., Converter={StaticResource NullToVisibilityConverter}}">
+                    <StackPanel Margin="5">
+                        <TextBlock Text="{Binding Name}" FontSize="18" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding DataContext.CurrentSession.StartAt, RelativeSource={RelativeSource AncestorType=Window}, StringFormat='Bắt đầu: {0:HH:mm:ss}'}" 
+                                   Visibility="{Binding DataContext.IsSessionActive, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,10">
+                            <Button Content="Mở Phiên" Width="80" Margin="2" Command="{Binding DataContext.StartSessionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    IsEnabled="{Binding DataContext.CanStartSession, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                            <Button Content="Tạm dừng" Width="80" Margin="2" Command="{Binding DataContext.PauseSessionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    IsEnabled="{Binding DataContext.CanPauseSession, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                            <Button Content="Thanh toán" Width="80" Margin="2" Background="Green"
+                                    Command="{Binding DataContext.CloseSessionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    IsEnabled="{Binding DataContext.IsSessionActive, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                        </StackPanel>
+
+                        <TextBlock Text="Danh sách Order:" FontWeight="Bold" Margin="0,10,0,5"/>
+                        <DataGrid ItemsSource="{Binding DataContext.CurrentSessionOrders, RelativeSource={RelativeSource AncestorType=Window}}" 
+                                  AutoGenerateColumns="False" IsReadOnly="True" MaxHeight="200">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Tên" Binding="{Binding Product.Name}" Width="*"/>
+                                <DataGridTextColumn Header="SL" Binding="{Binding Quantity}" Width="Auto"/>
+                                <DataGridTextColumn Header="Giá" Binding="{Binding Price, StringFormat='N0'}" Width="Auto"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </StackPanel>
+                </Grid>
+
+                <TextBlock Grid.Row="2" Text="GỌI MÓN (POS)" FontSize="16" FontWeight="Bold" Margin="5"/>
+                <ScrollViewer Grid.Row="3" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Products}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type entities:Product}">
+                                <Button Height="60" Width="80" Margin="3" 
+                                        IsEnabled="{Binding DataContext.IsSessionActive, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        Command="{Binding DataContext.AddOrderCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding}">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Name}" TextWrapping="Wrap" TextAlignment="Center"/>
+                                        <TextBlock Text="{Binding Price, StringFormat='N0'}" FontWeight="Bold" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
         </Grid>
+
         <StatusBar Grid.Row="2" Background="LightGray">
+            <StatusBarItem>
+                <TextBlock Text="{Binding CurrentUser.FullName, StringFormat='NV: {0}'}" Margin="10,0"/>
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right">
+                <TextBlock Text="{Binding CurrentTime}" Margin="10,0"/>
+            </StatusBarItem>
         </StatusBar>
+
         <controls:LoadingIndicator Grid.Row="0" Grid.RowSpan="3" Visibility="{Binding IsLoading, Converter={StaticResource BooleanToVisibilityConverter}}"/>
     </Grid>
 </Window>

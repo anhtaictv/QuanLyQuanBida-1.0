@@ -70,11 +70,11 @@ namespace QuanLyQuanBida.Infrastructure.Data.Context
                 {
                     Id = 1,
                     Username = "admin",
-                    PasswordHash = "$2a$11$A/g.c.3x9k.Qp4/Pj/pPq.i/P.3Cg.f/q.3P.c.3x9k.Qp4/Pj/pPq.", 
+                    PasswordHash = "$2a$11$A/g.c.3x9k.Qp4/Pj/pPq.i/P.3Cg.f/q.3P.c.3x9k.Qp4/Pj/pPq.", // Mật khẩu là 'admin'
                     FullName = "Administrator",
                     RoleId = 1, // Owner
                     IsActive = true,
-                    CreatedAt = DateTime.UtcNow
+                    CreatedAt = new DateTime(2025, 11, 14, 0, 0, 0, DateTimeKind.Utc) // <-- SỬA THÀNH GIÁ TRỊ TĨNH
                 }
             );
 

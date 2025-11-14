@@ -9,24 +9,27 @@ namespace QuanLyQuanBida.Application.Services
 {
     public class ShiftService : IShiftService
     {
+        // SỬA: Dùng IDbContextFactory thay vì DbContext trực tiếp
         private readonly IDbContextFactory<QuanLyBidaDbContext> _contextFactory;
 
-        public ShiftService(IDbContextFactory<QuanLyBidaDbContext> contextFactory) 
+        public ShiftService(IDbContextFactory<QuanLyBidaDbContext> contextFactory)
         {
             _contextFactory = contextFactory;
         }
 
         public async Task<Shift?> OpenShiftAsync(int userId, decimal openingCash)
         {
-            await using var context = await _contextFactory.CreateDbContextAsync(); 
-            if (await GetActiveShiftByUserIdAsync(userId) != null) return null;
+            // SỬA: Lấy context từ factory
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            if (await GetActiveShiftByUserIdAsync(userId) != null) return null; 
+
             var newShift = new Shift
             {
                 UserId = userId,
                 StartAt = DateTime.UtcNow,
                 OpeningCash = openingCash,
                 Notes = "Ca làm việc mới",
-                Status = "OPEN"
             };
             context.Shifts.Add(newShift);
             await context.SaveChangesAsync();
@@ -35,20 +38,25 @@ namespace QuanLyQuanBida.Application.Services
 
         public async Task<Shift?> CloseShiftAsync(int shiftId, decimal closingCash, string notes)
         {
+
             await using var context = await _contextFactory.CreateDbContextAsync();
+
             var shift = await context.Shifts.FindAsync(shiftId);
-            if (shift == null || shift.Status == "CLOSED") return null;
+            if (shift == null || shift.Status == "CLOSED") return null; 
+
             shift.EndAt = DateTime.UtcNow;
             shift.ClosingCash = closingCash;
             shift.Notes = notes;
-            shift.Status = "CLOSED";
+            shift.Status = "CLOSED"; 
             await context.SaveChangesAsync();
             return shift;
         }
 
         public async Task<Shift?> GetActiveShiftByUserIdAsync(int userId)
         {
-            await using var context = await _contextFactory.CreateDbContextAsync(); 
+            // SỬA: Lấy context từ factory
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
             return await context.Shifts
                 .FirstOrDefaultAsync(s => s.UserId == userId && s.Status == "OPEN");
         }

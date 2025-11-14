@@ -1,27 +1,53 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using QuanLyQuanBida.UI.ViewModels;
 using System.Windows;
-using System.Windows.Input;
+// SỬA: Xóa using System.Windows.Input và các sự kiện click
 
-namespace QuanLyQuanBida.UI;
-
-public partial class MainWindow : Window
+namespace QuanLyQuanBida.UI
 {
-    public MainWindow()
+    public partial class MainWindow : Window
     {
-        InitializeComponent();
-        this.DataContext = App.Services.GetRequiredService<MainWindowViewModel>();
+        public MainWindow()
+        {
+            InitializeComponent();
+            // DataContext được gán tự động từ App.Services
+            this.DataContext = App.Services.GetRequiredService<MainWindowViewModel>();
+        }
+
+        // SỬA: Xóa toàn bộ sự kiện 'Border_MouseLeftButtonDown'
     }
 
-    private void Border_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    // SỬA: Thêm Converter cho màu sắc (bạn có thể tạo file riêng)
+    public class TableStatusToBrushConverter : System.Windows.Data.IValueConverter
     {
-        // Khi click vào một bàn, gọi command của ViewModel
-        if (sender is System.Windows.Controls.Border border && border.DataContext is Core.Entities.Table table)
+        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
         {
-            if (this.DataContext is ViewModels.MainWindowViewModel viewModel)
+            return (value?.ToString()) switch
             {
-                viewModel.SelectTableCommand.Execute(table);
-            }
+                "Occupied" => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.LightCoral),
+                "Reserved" => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.LightBlue),
+                "Maintenance" => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.LightGray),
+                _ => new System.Windows.Media.SolidColorBrush(System.Windows.Media.Colors.LightGreen), // "Free"
+            };
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    // SỬA: Thêm Converter để ẩn/hiện panel
+    public class NullToVisibilityConverter : System.Windows.Data.IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            return value == null ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            throw new NotImplementedException();
         }
     }
 }

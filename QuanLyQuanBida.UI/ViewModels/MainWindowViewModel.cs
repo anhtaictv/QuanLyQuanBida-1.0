@@ -10,364 +10,284 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Linq;
 using System.Threading.Tasks;
-using System; // SỬA: Thêm using System (cần cho Exception)
+using System;
+using System.Windows.Threading; // SỬA: Thêm
 using MessageBox = System.Windows.MessageBox;
 
-namespace QuanLyQuanBida.UI.ViewModels;
-
-public partial class MainWindowViewModel : ObservableObject
+namespace QuanLyQuanBida.UI.ViewModels
 {
-    private readonly ITableService _tableService;
-    private readonly ISessionService _sessionService;
-    private readonly ICurrentUserService _currentUserService;
-    private readonly IProductService _productService;
-    private readonly IOrderService _orderService;
-    private readonly IBillingService _billingService;
-    private readonly IRateService _rateService;
-
-    [ObservableProperty]
-    private ObservableCollection<Table> _tables = new();
-
-    [ObservableProperty]
-    private Table? _selectedTable;
-
-    [ObservableProperty]
-    private ObservableCollection<Product> _products = new();
-
-    [ObservableProperty]
-    private ObservableCollection<Order> _currentSessionOrders = new();
-
-    [ObservableProperty]
-    private Session? _currentSession;
-
-    [ObservableProperty]
-    private bool _isSessionActive = false;
-
-    [ObservableProperty]
-    private bool _isLoading = false;
-
-    [ObservableProperty]
-    private User? _currentUser;
-
-    // === THÊM MỚI: Thuộc tính phân quyền (từ các bước trước) ===
-    public bool CanManageUsers => _currentUserService.HasPermission("ManageUsers");
-    public bool CanManageProducts => _currentUserService.HasPermission("ManageProducts");
-    public bool CanManageCustomers => _currentUserService.HasPermission("ManageCustomers");
-    public bool CanManageInventory => _currentUserService.HasPermission("ManageInventory");
-    public bool CanManageRates => _currentUserService.HasPermission("ManageRates");
-    public bool CanViewReports => _currentUserService.HasPermission("ViewReports");
-    public bool CanManageSettings => _currentUserService.HasPermission("ManageSettings");
-
-
-    public MainWindowViewModel(
-        ITableService tableService,
-        ISessionService sessionService,
-        ICurrentUserService currentUserService,
-        IProductService productService,
-        IOrderService orderService,
-        IBillingService billingService,
-        IRateService rateService)
+    public partial class MainWindowViewModel : ObservableObject
     {
-        _tableService = tableService;
-        _sessionService = sessionService;
-        _currentUserService = currentUserService;
-        _productService = productService;
-        _orderService = orderService;
-        _billingService = billingService;
-        _rateService = rateService;
+        // ... (Các service đã có) ...
+        private readonly ITableService _tableService;
+        private readonly ISessionService _sessionService;
+        private readonly ICurrentUserService _currentUserService;
+        private readonly IProductService _productService;
+        private readonly IOrderService _orderService;
+        private readonly IBillingService _billingService;
+        private readonly IRateService _rateService;
 
-        _currentUser = _currentUserService.CurrentUser;
+        [ObservableProperty]
+        private ObservableCollection<Table> _tables = new();
 
-        _ = LoadDataAsync();
-    }
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(CanStartSession))] // SỬA: Thêm
+        [NotifyPropertyChangedFor(nameof(CanPauseSession))] // SỬA: Thêm
+        private Table? _selectedTable;
 
-    private async Task LoadDataAsync()
-    {
-        IsLoading = true;
-        try
+        [ObservableProperty]
+        private ObservableCollection<Product> _products = new();
+        [ObservableProperty]
+        private ObservableCollection<Order> _currentSessionOrders = new();
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsSessionActive))] // SỬA: Thêm
+        [NotifyPropertyChangedFor(nameof(CanStartSession))] // SỬA: Thêm
+        [NotifyPropertyChangedFor(nameof(CanPauseSession))] // SỬA: Thêm
+        private Session? _currentSession;
+
+        [ObservableProperty]
+        private bool _isLoading = false;
+        [ObservableProperty]
+        private User? _currentUser;
+
+        // SỬA: Thêm CurrentTime cho StatusBar
+        [ObservableProperty]
+        private string _currentTime = App.CurrentTime;
+
+        // SỬA: Thêm các thuộc tính logic
+        public bool IsSessionActive => CurrentSession != null && CurrentSession.Status != "Finished";
+        public bool CanStartSession => SelectedTable != null && !IsSessionActive;
+        public bool CanPauseSession => IsSessionActive && CurrentSession?.Status == "Started";
+
+        // === Thuộc tính phân quyền (từ các bước trước) ===
+        public bool CanManageUsers => _currentUserService.HasPermission("ManageUsers");
+        public bool CanManageProducts => _currentUserService.HasPermission("ManageProducts");
+        public bool CanManageCustomers => _currentUserService.HasPermission("ManageCustomers");
+        public bool CanManageInventory => _currentUserService.HasPermission("ManageInventory");
+        public bool CanManageRates => _currentUserService.HasPermission("ManageRates");
+        public bool CanViewReports => _currentUserService.HasPermission("ViewReports");
+        public bool CanManageSettings => _currentUserService.HasPermission("ManageSettings");
+
+        public MainWindowViewModel(
+            ITableService tableService,
+            ISessionService sessionService,
+            ICurrentUserService currentUserService,
+            IProductService productService,
+            IOrderService orderService,
+            IBillingService billingService,
+            IRateService rateService)
         {
-            await LoadTablesAsync();
-            await LoadProductsAsync();
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"Error loading data: {ex.Message}");
-            MessageBox.Show($"Không thể tải dữ liệu: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-        finally
-        {
-            IsLoading = false;
-        }
-    }
+            _tableService = tableService;
+            _sessionService = sessionService;
+            _currentUserService = currentUserService;
+            _productService = productService;
+            _orderService = orderService;
+            _billingService = billingService;
+            _rateService = rateService;
+            _currentUser = _currentUserService.CurrentUser;
 
-    private async Task LoadTablesAsync()
-    {
-        var tablesFromDb = await _tableService.GetAllTablesAsync();
-        Tables.Clear();
-        foreach (var table in tablesFromDb)
-            Tables.Add(table);
-    }
+            // SỬA: Đăng ký sự kiện đồng hồ
+            App.CurrentTimeChanged += (s, e) => CurrentTime = App.CurrentTime;
 
-    private async Task LoadProductsAsync()
-    {
-        var productsFromDb = await _productService.GetAllProductsAsync();
-        Products.Clear();
-        foreach (var product in productsFromDb)
-            Products.Add(product);
-    }
-
-    [RelayCommand]
-    private void SelectTable(Table table)
-    {
-        SelectedTable = table;
-        _ = LoadSessionForTableAsync(table.Id);
-    }
-
-    private async Task LoadSessionForTableAsync(int tableId)
-    {
-        var session = await _sessionService.GetActiveSessionByTableIdAsync(tableId);
-        if (session != null)
-        {
-            CurrentSession = session;
-            IsSessionActive = true;
-            await LoadOrdersForSessionAsync(session.Id);
-        }
-        else
-        {
-            CurrentSession = null;
-            IsSessionActive = false;
-            CurrentSessionOrders.Clear();
-        }
-    }
-
-    private async Task LoadOrdersForSessionAsync(int sessionId)
-    {
-        var orders = await _orderService.GetOrdersBySessionIdAsync(sessionId);
-        CurrentSessionOrders.Clear();
-        foreach (var order in orders)
-            CurrentSessionOrders.Add(order);
-    }
-
-    [RelayCommand]
-    private async Task StartSession()
-    {
-        if (SelectedTable == null || _currentUserService.CurrentUser == null) return;
-
-        var rates = await _rateService.GetAllRatesAsync();
-        var defaultRate = rates.FirstOrDefault(r => r.IsDefault) ?? rates.FirstOrDefault();
-
-        if (defaultRate == null)
-        {
-            MessageBox.Show("Không có giá giờ nào được cấu hình.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
-            return;
+            _ = LoadDataAsync();
         }
 
-        var newSession = await _sessionService.StartSessionAsync(
-            SelectedTable.Id,
-            _currentUserService.CurrentUser.Id,
-            defaultRate.Id);
-
-        if (newSession != null)
+        private async Task LoadDataAsync()
         {
-            await LoadTablesAsync();
-            await LoadSessionForTableAsync(SelectedTable.Id);
-        }
-        else
-        {
-            MessageBox.Show("Không thể bắt đầu phiên chơi. Bàn có thể đã được sử dụng.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
-    [RelayCommand]
-    private async Task PauseSession()
-    {
-        if (CurrentSession == null) return;
-
-        var success = await _sessionService.PauseSessionAsync(
-            CurrentSession.Id,
-            _currentUserService.CurrentUser?.Id ?? 0);
-
-        if (success)
-            await LoadSessionForTableAsync(SelectedTable?.Id ?? 0);
-    }
-
-    [RelayCommand]
-    private async Task ResumeSession()
-    {
-        if (CurrentSession == null) return;
-
-        var success = await _sessionService.ResumeSessionAsync(
-            CurrentSession.Id,
-            _currentUserService.CurrentUser?.Id ?? 0);
-
-        if (success)
-            await LoadSessionForTableAsync(SelectedTable?.Id ?? 0);
-    }
-
-    // === CÁC LỆNH MỞ CỬA SỔ (ĐÃ SỬA LẠI TOÀN BỘ) ===
-
-    [RelayCommand]
-    private void ShowCustomerManagement()
-    {
-        // Cách làm này (dùng App.Services) là ĐÚNG
-        var customerWindow = App.Services.GetRequiredService<CustomerManagementView>();
-        customerWindow.ShowDialog();
-    }
-
-    [RelayCommand]
-    private void ShowRateSettings()
-    {
-        // Cách làm này (dùng App.Services) là ĐÚNG
-        var rateSettingWindow = App.Services.GetRequiredService<RateSettingView>();
-        rateSettingWindow.ShowDialog();
-    }
-
-    [RelayCommand]
-    private void ShowSystemSettings()
-    {
-        // SỬA LỖI: Dùng App.Services
-        var backupWindow = App.Services.GetRequiredService<BackupWindow>();
-        backupWindow.ShowDialog();
-    }
-
-    [RelayCommand]
-    private void SetLightTheme()
-    {
-        MessageBox.Show("Chuyển sang giao diện Sáng [TODO]");
-    }
-
-    [RelayCommand]
-    private void SetDarkTheme()
-    {
-        MessageBox.Show("Chuyển sang giao diện Tối [TODO]");
-    }
-
-    [RelayCommand]
-    private void ShowUserManagement()
-    {
-        // SỬA LỖI: Không dùng 'new'
-        // new UserManagementView().ShowDialog(); 
-        var view = App.Services.GetRequiredService<UserManagementView>();
-        view.ShowDialog();
-    }
-
-    [RelayCommand]
-    private void ShowProductManagement()
-    {
-        // SỬA LỖI: Không dùng 'new'
-        // new ProductManagementView().ShowDialog();
-        var view = App.Services.GetRequiredService<ProductManagementView>();
-        view.ShowDialog();
-    }
-
-    [RelayCommand]
-    private void ShowReports()
-    {
-        // SỬA LỖI: Không dùng 'new'
-        // new ReportsView().ShowDialog();
-        var view = App.Services.GetRequiredService<ReportsView>();
-        view.ShowDialog();
-    }
-
-    [RelayCommand]
-    private void ShowInventoryManagement()
-    {
-        var inventoryWindow = App.Services.GetRequiredService<InventoryManagementView>();
-        inventoryWindow.ShowDialog();
-    }
-
-    [RelayCommand]
-    private void ShowShiftManagement()
-    {
-        // SỬA LỖI: Không dùng 'new'
-        // var shiftView = new ShiftManagementView();
-        var shiftView = App.Services.GetRequiredService<ShiftManagementView>();
-        shiftView.ShowDialog();
-    }
-
-    [RelayCommand]
-    private void ShowBackupWindow()
-    {
-        // SỬA LỖI: Không dùng 'new'
-        // var backupWindow = new BackupWindow();
-        var backupWindow = App.Services.GetRequiredService<BackupWindow>();
-        backupWindow.ShowDialog();
-    }
-
-    // === CÁC LỆNH NGHIỆP VỤ KHÁC ===
-
-    [RelayCommand]
-    private async Task AddOrder(Product product)
-    {
-        if (SelectedTable == null || CurrentSession == null) return;
-
-        var newOrder = await _orderService.CreateOrderAsync(new OrderDto
-        {
-            SessionId = CurrentSession.Id,
-            ProductId = product.Id,
-            Quantity = 1,
-            Price = product.Price,
-            Note = ""
-        });
-
-        if (newOrder != null)
-            CurrentSessionOrders.Add(newOrder);
-    }
-
-    [RelayCommand]
-    private async Task CloseSession()
-    {
-        if (CurrentSession == null) return;
-
-        var closedSession = await _sessionService.CloseSessionAsync(
-            CurrentSession.Id,
-            _currentUserService.CurrentUser?.Id ?? 0);
-
-        if (closedSession != null)
-        {
-            var invoice = await _billingService.GenerateInvoiceAsync(CurrentSession.Id);
-
-            // SỬA LỖI: Phải lấy PaymentWindow từ DI
-            var paymentWindow = App.Services.GetRequiredService<PaymentWindow>();
-            // Truyền invoice DTO vào ViewModel của cửa sổ thanh toán
-            if (paymentWindow.DataContext is PaymentViewModel pvm)
+            IsLoading = true;
+            try
             {
-                pvm.Invoice = invoice;
+                await LoadTablesAsync();
+                await LoadProductsAsync();
             }
-            paymentWindow.ShowDialog();
-
-            await LoadTablesAsync();
-            await LoadSessionForTableAsync(SelectedTable?.Id ?? 0);
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error loading data: {ex.Message}");
+                MessageBox.Show($"Không thể tải dữ liệu: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                IsLoading = false;
+            }
         }
-    }
 
-    [RelayCommand]
-    private void Logout()
-    {
-        if (MessageBox.Show("Bạn có chắc chắn muốn đăng xuất?", "Xác nhận", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+        private async Task LoadTablesAsync()
         {
-            // SỬA LỖI: Dùng service đã được inject (an toàn hơn)
-            // if (App.Services.GetService(typeof(ICurrentUserService)) is ICurrentUserService currentUserService)
-            //     currentUserService.CurrentUser = null;
-            _currentUserService.CurrentUser = null;
-            _currentUserService.Permissions.Clear();
+            var tablesFromDb = await _tableService.GetAllTablesAsync();
+            Tables.Clear();
+            foreach (var table in tablesFromDb)
+                Tables.Add(table);
+        }
 
+        private async Task LoadProductsAsync()
+        {
+            var productsFromDb = await _productService.GetAllProductsAsync();
+            Products.Clear();
+            foreach (var product in productsFromDb)
+                Products.Add(product);
+        }
 
-            // Đóng cửa sổ hiện tại (MainWindow)
-            // (Cách này an toàn hơn là FirstOrDefault)
-            var currentWindow = System.Windows.Application.Current.Windows.OfType<MainWindow>().FirstOrDefault();
-            currentWindow?.Close();
+        [RelayCommand]
+        private async Task SelectTable(Table table) // SỬA: Thêm async
+        {
+            if (table == null) return;
+            SelectedTable = table;
+            await LoadSessionForTableAsync(table.Id);
+        }
 
-            // Mở cửa sổ Login
-            var loginView = App.Services.GetRequiredService<LoginView>();
-            loginView.Show();
+        private async Task LoadSessionForTableAsync(int tableId)
+        {
+            var session = await _sessionService.GetActiveSessionByTableIdAsync(tableId);
+            if (session != null)
+            {
+                CurrentSession = session;
+                await LoadOrdersForSessionAsync(session.Id);
+            }
+            else
+            {
+                CurrentSession = null;
+                CurrentSessionOrders.Clear();
+            }
+        }
+
+        private async Task LoadOrdersForSessionAsync(int sessionId)
+        {
+            var orders = await _orderService.GetOrdersBySessionIdAsync(sessionId);
+            CurrentSessionOrders.Clear();
+            foreach (var order in orders)
+                CurrentSessionOrders.Add(order);
+        }
+
+        [RelayCommand(CanExecute = nameof(CanStartSession))] // SỬA: Thêm CanExecute
+        private async Task StartSession()
+        {
+            if (SelectedTable == null || _currentUserService.CurrentUser == null) return;
+
+            // Lấy giá giờ
+            var rate = await _rateService.GetApplicableRateAsync(DateTime.Now);
+            if (rate == null)
+            {
+                MessageBox.Show("Không có giá giờ nào được cấu hình cho thời điểm này.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
+            var newSession = await _sessionService.StartSessionAsync(
+                SelectedTable.Id,
+                _currentUserService.CurrentUser.Id,
+                rate.Id);
+
+            if (newSession != null)
+            {
+                await LoadTablesAsync(); // Tải lại trạng thái bàn
+                // Chọn lại bàn vừa mở
+                SelectTable(Tables.FirstOrDefault(t => t.Id == SelectedTable.Id)!);
+            }
+            else
+            {
+                MessageBox.Show("Không thể bắt đầu phiên chơi. Bàn có thể đã được sử dụng.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        [RelayCommand(CanExecute = nameof(CanPauseSession))] // SỬA: Thêm CanExecute
+        private async Task PauseSession()
+        {
+            if (CurrentSession == null) return;
+
+            // SỬA: Thêm logic Resume
+            if (CurrentSession.Status == "Paused")
+            {
+                await _sessionService.ResumeSessionAsync(CurrentSession.Id, _currentUserService.CurrentUser?.Id ?? 0);
+            }
+            else
+            {
+                await _sessionService.PauseSessionAsync(CurrentSession.Id, _currentUserService.CurrentUser?.Id ?? 0);
+            }
+            await LoadSessionForTableAsync(SelectedTable!.Id);
+        }
+
+        [RelayCommand(CanExecute = nameof(IsSessionActive))] // SỬA: Thêm CanExecute
+        private async Task AddOrder(Product product)
+        {
+            if (product == null || SelectedTable == null || CurrentSession == null) return;
+
+            var newOrder = await _orderService.CreateOrderAsync(new OrderDto
+            {
+                SessionId = CurrentSession.Id,
+                ProductId = product.Id,
+                Quantity = 1,
+                Price = product.Price, // Giá được lấy từ Product
+                Note = ""
+            });
+
+            if (newOrder != null)
+            {
+                // Tải lại danh sách order
+                await LoadOrdersForSessionAsync(CurrentSession.Id);
+            }
+        }
+
+        [RelayCommand(CanExecute = nameof(IsSessionActive))] // SỬA: Thêm CanExecute
+        private async Task CloseSession()
+        {
+            if (CurrentSession == null) return;
+
+            var closedSession = await _sessionService.CloseSessionAsync(
+                CurrentSession.Id,
+                _currentUserService.CurrentUser?.Id ?? 0);
+
+            if (closedSession != null)
+            {
+                var invoice = await _billingService.GenerateInvoiceAsync(CurrentSession.Id);
+
+                // Mở cửa sổ thanh toán
+                var paymentWindow = App.Services.GetRequiredService<PaymentWindow>();
+
+                // Gán ViewModel và Invoice
+                var pvm = (PaymentViewModel)paymentWindow.DataContext;
+                pvm.Invoice = invoice;
+
+                paymentWindow.ShowDialog();
+
+                // Tải lại
+                await LoadTablesAsync();
+                await LoadSessionForTableAsync(SelectedTable?.Id ?? 0);
+            }
+        }
+
+        // === CÁC LỆNH MỞ CỬA SỔ (Giữ nguyên) ===
+        [RelayCommand] private void ShowCustomerManagement() => App.Services.GetRequiredService<CustomerManagementView>().ShowDialog();
+        [RelayCommand] private void ShowRateSettings() => App.Services.GetRequiredService<RateSettingView>().ShowDialog();
+        [RelayCommand] private void ShowSystemSettings() => App.Services.GetRequiredService<BackupWindow>().ShowDialog();
+        [RelayCommand] private void SetLightTheme() => MessageBox.Show("Chuyển sang giao diện Sáng [TODO]");
+        [RelayCommand] private void SetDarkTheme() => MessageBox.Show("Chuyển sang giao diện Tối [TODO]");
+        [RelayCommand] private void ShowUserManagement() => App.Services.GetRequiredService<UserManagementView>().ShowDialog();
+        [RelayCommand] private void ShowProductManagement() => App.Services.GetRequiredService<ProductManagementView>().ShowDialog();
+        [RelayCommand] private void ShowReports() => App.Services.GetRequiredService<ReportsView>().ShowDialog();
+        [RelayCommand] private void ShowInventoryManagement() => App.Services.GetRequiredService<InventoryManagementView>().ShowDialog();
+        [RelayCommand] private void ShowShiftManagement() => App.Services.GetRequiredService<ShiftManagementView>().ShowDialog();
+        [RelayCommand] private void ShowBackupWindow() => App.Services.GetRequiredService<BackupWindow>().ShowDialog();
+
+        [RelayCommand]
+        private void Logout()
+        {
+            if (MessageBox.Show("Bạn có chắc chắn muốn đăng xuất?", "Xác nhận", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            {
+                _currentUserService.CurrentUser = null;
+                _currentUserService.Permissions.Clear();
+
+                var currentWindow = System.Windows.Application.Current.Windows.OfType<MainWindow>().FirstOrDefault();
+                currentWindow?.Close();
+
+                var loginView = App.Services.GetRequiredService<LoginView>();
+                loginView.Show();
+            }
+        }
+
+        [RelayCommand]
+        private void Exit()
+        {
+            System.Windows.Application.Current.Shutdown();
         }
     }
-
-    [RelayCommand]
-    private void Exit()
-    {
-        System.Windows.Application.Current.Shutdown();
-    }
-
 }

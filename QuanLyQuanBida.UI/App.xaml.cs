@@ -8,6 +8,7 @@ using QuanLyQuanBida.UI.ViewModels;
 using QuanLyQuanBida.UI.Views;
 using Serilog;
 using System;
+using QuanLyQuanBida.Application.Services;
 using System.Threading;
 using System.Windows;
 using Timer = System.Threading.Timer;
@@ -65,9 +66,6 @@ namespace QuanLyQuanBida.UI
             {
                 var connectionString = BuildConnectionString();
 
-                services.AddDbContext<QuanLyBidaDbContext>(options =>
-                    options.UseSqlServer(connectionString), ServiceLifetime.Scoped);
-
                 services.AddDbContextFactory<QuanLyBidaDbContext>(options =>
                     options.UseSqlServer(connectionString));
 
@@ -86,7 +84,7 @@ namespace QuanLyQuanBida.UI
                 services.AddTransient<IPrintService, PrintService>();
                 services.AddSingleton<IThemeService, ThemeService>();
                 services.AddTransient<IInventoryService, InventoryService>();
-                services.AddTransient<IShiftService, ShiftService>(); 
+                services.AddTransient<IShiftService, ShiftService>();
                 services.AddTransient<IAuditService, AuditService>();
                 services.AddSingleton<IBackupService>(new BackupService(connectionString));
                 services.AddTransient<IRoleService, RoleService>();
