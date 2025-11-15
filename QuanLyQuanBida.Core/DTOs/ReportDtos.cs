@@ -104,3 +104,27 @@ public class UserDto
     public int RoleId { get; set; }
     public bool IsActive { get; set; } = true;
 }
+
+public class TableDto
+{
+    public int Id { get; set; }
+    public string Code { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string? Zone { get; set; }
+    public int Seats { get; set; }
+    public string? Status { get; set; }
+    public string? Note { get; set; }
+}
+
+public class TableBatchCreateDto
+{
+    public string Prefix { get; set; } = "B";
+    public int StartNumber { get; set; } = 1;
+    public int EndNumber { get; set; } = 10;
+    public string Zone { get; set; } = "Tầng 1";
+    public int Seats { get; set; } = 4;
+    public string NamePrefix { get; set; } = "Bàn ";
+    public int Padding { get; set; } = 2; // (Để tạo ra "01", "02")
+}
+public class TablesChangedMessage { }
+public class ProductsChangedMessage { }

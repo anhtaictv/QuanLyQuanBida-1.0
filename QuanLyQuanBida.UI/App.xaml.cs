@@ -1,6 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using CommunityToolkit.Mvvm.Messaging;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using QuanLyQuanBida.Application.Services;
 using QuanLyQuanBida.Application.Services;
 using QuanLyQuanBida.Core.Interfaces;
 using QuanLyQuanBida.Infrastructure.Data.Context;
@@ -8,11 +10,10 @@ using QuanLyQuanBida.UI.ViewModels;
 using QuanLyQuanBida.UI.Views;
 using Serilog;
 using System;
-using QuanLyQuanBida.Application.Services;
 using System.Threading;
 using System.Windows;
-using Timer = System.Threading.Timer;
 using MessageBox = System.Windows.MessageBox;
+using Timer = System.Threading.Timer;
 
 namespace QuanLyQuanBida.UI
 {
@@ -90,6 +91,7 @@ namespace QuanLyQuanBida.UI
                 services.AddTransient<IRoleService, RoleService>();
                 services.AddTransient<IPermissionService, PermissionService>();
                 services.AddTransient<IUserService, UserService>();
+                services.AddSingleton<IMessenger>(WeakReferenceMessenger.Default);
 
 
                 // --- Views & ViewModels ---
@@ -128,6 +130,12 @@ namespace QuanLyQuanBida.UI
 
                 services.AddTransient<UserManagementView>();
                 services.AddTransient<UserManagementViewModel>();
+
+                services.AddTransient<TableManagementView>();
+                services.AddTransient<TableManagementViewModel>();
+
+                services.AddTransient<BatchCreateTableWindow>();
+                services.AddTransient<BatchCreateTableViewModel>();
 
             });
         private static string BuildConnectionString()

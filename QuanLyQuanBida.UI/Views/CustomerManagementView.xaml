@@ -27,7 +27,7 @@
                 <TextBox Text="{Binding CustomerForm.Address}" Height="25" Margin="0,0,0,10"/>
 
                 <Label Content="Loại khách:"/>
-                <ComboBox SelectedItem="{Binding CustomerForm.Type}" Height="25" Margin="0,0,0,10">
+                <ComboBox Text="{Binding CustomerForm.Type}" IsEditable="True" Height="25" Margin="0,0,0,10">
                     <ComboBoxItem Content="Walk-in"/>
                     <ComboBoxItem Content="VIP"/>
                 </ComboBox>

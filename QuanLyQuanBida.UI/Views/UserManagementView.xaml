@@ -8,9 +8,6 @@
         mc:Ignorable="d"
         Title="Quản lý Người dùng" Height="600" Width="900"
         WindowStartupLocation="CenterScreen">
-    <Window.DataContext>
-        <viewmodels:UserManagementViewModel/>
-    </Window.DataContext>
     <Grid Margin="10">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>

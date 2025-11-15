@@ -8,9 +8,6 @@
         mc:Ignorable="d"
         Title="Quản lý Sản phẩm" Height="600" Width="900"
         WindowStartupLocation="CenterScreen">
-    <Window.DataContext>
-        <viewmodels:ProductManagementViewModel/>
-    </Window.DataContext>
     <Grid Margin="10">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*"/>
@@ -35,12 +32,30 @@
                      Text="{Binding ProductForm.Price}"/>
 
             <Label Content="Danh mục:"/>
-            <ComboBox x:Name="CategoryComboBox" Height="25" IsEditable="True" 
-                      Text="{Binding ProductForm.Category}" Margin="0,0,0,10"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <ComboBox Grid.Column="0" Height="25" IsEditable="True" 
+                      Text="{Binding ProductForm.Category}" 
+                      ItemsSource="{Binding Categories}"/>
+                <Button Grid.Column="1" Content="+" Width="25" Height="25" Margin="5,0,0,0"
+                    Command="{Binding AddNewCategoryCommand}"/>
+            </Grid>
 
             <Label Content="Đơn vị tính:"/>
-            <TextBox x:Name="UnitTextBox" Height="25" Margin="0,0,0,10" 
-                     Text="{Binding ProductForm.Unit}"/>
+            <Grid Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <ComboBox Grid.Column="0" Height="25" IsEditable="True" 
+                      Text="{Binding ProductForm.Unit}" 
+                      ItemsSource="{Binding Units}"/>
+                <Button Grid.Column="1" Content="+" Width="25" Height="25" Margin="5,0,0,0"
+                    Command="{Binding AddNewUnitCommand}"/>
+            </Grid>
 
             <CheckBox Content="Theo dõi tồn kho" IsChecked="{Binding ProductForm.IsInventoryTracked}" Margin="0,0,0,10"/>
 

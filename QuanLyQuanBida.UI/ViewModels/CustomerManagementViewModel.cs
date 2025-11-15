@@ -92,27 +92,42 @@ namespace QuanLyQuanBida.UI.ViewModels
                 if (success)
                 {
                     MessageBox.Show("Lưu thông tin khách hàng thành công.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+
                     await LoadCustomersAsync();
+
                     AddNew();
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Lỗi khi lưu khách hàng: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Lỗi khi lưu khách hàng: {ex.Message}\n\nInner Exception: {ex.InnerException?.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
         [RelayCommand]
         private async Task DeleteCustomer(Customer customer)
         {
-            if (customer == null || MessageBox.Show($"Bạn có chắc muốn xóa khách hàng '{customer.Name}'?", "Xác nhận", MessageBoxButton.YesNo) != MessageBoxResult.Yes)
+            if (customer == null || MessageBox.Show($"Bạn có chắc muốn xóa khách hàng '{customer.Name}'?", "Xác nhận", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
                 return;
 
-            if (await _customerService.DeleteCustomerAsync(customer.Id))
+            try 
             {
-                MessageBox.Show("Xóa khách hàng thành công.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
-                await LoadCustomersAsync();
-                AddNew();
+                if (await _customerService.DeleteCustomerAsync(customer.Id))
+                {
+                    MessageBox.Show("Xóa khách hàng thành công.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                    await LoadCustomersAsync();
+
+                    AddNew();
+                }
+                else
+                {
+                    MessageBox.Show("Xóa thất bại. Khách hàng có thể đang được liên kết với một phiên chơi.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Lỗi khi xóa khách hàng: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }

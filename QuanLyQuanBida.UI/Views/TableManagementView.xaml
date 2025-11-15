@@ -1,0 +1,88 @@
+﻿<Window x:Class="QuanLyQuanBida.UI.Views.TableManagementView"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:QuanLyQuanBida.UI.Views"
+        mc:Ignorable="d"
+        Title="Quản lý Bàn" Height="600" Width="900"
+        WindowStartupLocation="CenterScreen">
+	<Grid Margin="10">
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition Width="300"/>
+			<ColumnDefinition Width="*"/>
+		</Grid.ColumnDefinitions>
+
+		<Border Grid.Column="0" Padding="10" BorderThickness="1" BorderBrush="LightGray" Margin="0,0,10,0">
+			<StackPanel DataContext="{Binding TableForm}">
+				<TextBlock Text="Thông tin Bàn" FontWeight="Bold" FontSize="16" Margin="0,0,0,10"/>
+
+				<Label Content="Mã Bàn (Vd: B01):"/>
+				<TextBox Text="{Binding Code}" Height="25" Margin="0,0,0,10"/>
+
+				<Label Content="Tên Bàn (Vd: Bàn 01):"/>
+				<TextBox Text="{Binding Name}" Height="25" Margin="0,0,0,10"/>
+
+				<Label Content="Khu vực (Vd: Tầng 1, VIP):"/>
+				<TextBox Text="{Binding Zone}" Height="25" Margin="0,0,0,10"/>
+
+				<Label Content="Trạng thái:"/>
+				<ComboBox Text="{Binding Status}" IsEditable="True" Height="25" Margin="0,0,0,10">
+					<ComboBoxItem Content="Free"/>
+					<ComboBoxItem Content="Occupied"/>
+					<ComboBoxItem Content="Maintenance"/>
+				</ComboBox>
+
+				<Label Content="Số chỗ ngồi:"/>
+				<TextBox Text="{Binding Seats}" Height="25" Margin="0,0,0,10"/>
+
+				<Label Content="Ghi chú:"/>
+				<TextBox Text="{Binding Note}" Height="50" Margin="0,0,0,10"/>
+
+				<StackPanel Orientation="Horizontal" Margin="0,15,0,0">
+					<Button Content="Lưu" Width="80" Margin="0,0,5,0" 
+                            Command="{Binding DataContext.SaveTableCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+					<Button Content="Hủy" Width="80" 
+                            Command="{Binding DataContext.AddNewCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+				</StackPanel>
+			</StackPanel>
+		</Border>
+
+		<Grid Grid.Column="1">
+			<Grid.RowDefinitions>
+				<RowDefinition Height="Auto"/>
+				<RowDefinition Height="*"/>
+			</Grid.RowDefinitions>
+
+			<Button Grid.Row="0" Content="Thêm mới" Width="100" HorizontalAlignment="Left" 
+                    Command="{Binding AddNewCommand}" Margin="115,5,0,5"/>
+			<Button Content="Tạo Hàng Loạt" Width="100" HorizontalAlignment="Left" Margin="10,5,0,5"
+                    Command="{Binding ShowBatchCreateWindowCommand}"/>
+
+			<DataGrid Grid.Row="1" ItemsSource="{Binding Tables}" SelectedItem="{Binding SelectedTable}"
+                      AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False">
+				<DataGrid.Columns>
+					<DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="50"/>
+					<DataGridTextColumn Header="Mã Bàn" Binding="{Binding Code}" Width="80"/>
+					<DataGridTextColumn Header="Tên Bàn" Binding="{Binding Name}" Width="*"/>
+					<DataGridTextColumn Header="Khu vực" Binding="{Binding Zone}" Width="100"/>
+					<DataGridTextColumn Header="Trạng thái" Binding="{Binding Status}" Width="100"/>
+					<DataGridTemplateColumn Header="Thao tác" Width="120">
+						<DataGridTemplateColumn.CellTemplate>
+							<DataTemplate>
+								<StackPanel Orientation="Horizontal">
+									<Button Content="Sửa" Width="50" Margin="5"
+                                            Command="{Binding DataContext.EditTableCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"/>
+									<Button Content="Xóa" Width="50" Margin="5"
+                                            Command="{Binding DataContext.DeleteTableCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding}"/>
+								</StackPanel>
+							</DataTemplate>
+						</DataGridTemplateColumn.CellTemplate>
+					</DataGridTemplateColumn>
+				</DataGrid.Columns>
+			</DataGrid>
+		</Grid>
+	</Grid>
+</Window>

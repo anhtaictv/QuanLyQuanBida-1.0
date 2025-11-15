@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:QuanLyQuanBida.UI"
              xmlns:converters="clr-namespace:QuanLyQuanBida.UI.Converters"
-    StartupUri="Views/LoginView.xaml">
+             ShutdownMode="OnExplicitShutdown">
     <Application.Resources>
         <converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
