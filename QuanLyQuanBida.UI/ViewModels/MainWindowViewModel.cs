@@ -16,10 +16,11 @@ using CommunityToolkit.Mvvm.Messaging;
 using System.ComponentModel;
 using System.Windows.Data;
 using MessageBox = System.Windows.MessageBox;
+using static QuanLyQuanBida.Core.DTOs.TableBatchCreateDto;
 
 namespace QuanLyQuanBida.UI.ViewModels
 {
-    public partial class MainWindowViewModel : ObservableObject, IRecipient<TablesChangedMessage>, IRecipient<ProductsChangedMessage>
+    public partial class MainWindowViewModel : ObservableObject, IRecipient<TablesChangedMessage>
     {
         private readonly ITableService _tableService;
         private readonly ISessionService _sessionService;
@@ -29,6 +30,7 @@ namespace QuanLyQuanBida.UI.ViewModels
         private readonly IBillingService _billingService;
         private readonly IRateService _rateService;
         private readonly IMessenger _messenger;
+        private readonly ICustomerService _customerService;
         private DispatcherTimer _timer;
 
         [ObservableProperty]
@@ -47,10 +49,19 @@ namespace QuanLyQuanBida.UI.ViewModels
         private ICollectionView? _productsView;
 
         [ObservableProperty]
-        private ObservableCollection<Order> _currentSessionOrders = new();
+        private ObservableCollection<GroupedOrderViewModel> _currentSessionOrders = new();
 
         [ObservableProperty]
         private Session? _currentSession;
+
+        [ObservableProperty]
+        private ObservableCollection<Customer> _availableCustomers = new();
+
+        [ObservableProperty]
+        private Customer? _selectedCustomerForSession;
+
+        [ObservableProperty]
+        private Customer? _currentSessionCustomer;
 
         [ObservableProperty]
         private bool _isLoading = false;
@@ -60,7 +71,6 @@ namespace QuanLyQuanBida.UI.ViewModels
         [ObservableProperty]
         private string _currentTime = App.CurrentTime;
 
-        // Logic bật/tắt nút (PHẦN NÀY LÀ QUAN TRỌNG)
         public bool IsSessionActive => CurrentSession != null && CurrentSession.Status != "Finished";
         public bool CanStartSession => SelectedTable != null && !IsSessionActive;
         public bool CanPauseSession => IsSessionActive && CurrentSession?.Status == "Started";
@@ -73,6 +83,11 @@ namespace QuanLyQuanBida.UI.ViewModels
         public bool CanManageRates => _currentUserService.HasPermission("ManageRates");
         public bool CanViewReports => _currentUserService.HasPermission("ViewReports");
         public bool CanManageSettings => _currentUserService.HasPermission("ManageSettings");
+        public bool CanPauseOrResume => IsSessionActive && (CurrentSession?.Status == "Started" || CurrentSession?.Status == "Paused");
+        public string PauseButtonText => (CurrentSession?.Status == "Paused") ? "Tiếp tục" : "Tạm dừng";
+
+        public bool CanAssignCustomer => IsSessionActive;
+
 
         public MainWindowViewModel(
             ITableService tableService,
@@ -82,7 +97,8 @@ namespace QuanLyQuanBida.UI.ViewModels
             IOrderService orderService,
             IBillingService billingService,
             IRateService rateService,
-            IMessenger messenger)
+            IMessenger messenger,
+            ICustomerService customerService)
         {
             _tableService = tableService;
             _sessionService = sessionService;
@@ -92,6 +108,7 @@ namespace QuanLyQuanBida.UI.ViewModels
             _billingService = billingService;
             _rateService = rateService;
             _messenger = messenger;
+            _customerService = customerService;
             _messenger.RegisterAll(this);
 
             _currentUser = _currentUserService.CurrentUser;
@@ -127,6 +144,7 @@ namespace QuanLyQuanBida.UI.ViewModels
             {
                 await LoadTablesAsync();
                 await LoadProductsAsync();
+                await LoadCustomersAsync();
             }
             catch (Exception ex)
             {
@@ -168,6 +186,16 @@ namespace QuanLyQuanBida.UI.ViewModels
             ProductsView = productsViewSource.View;
             OnPropertyChanged(nameof(ProductsView));
         }
+        private async Task LoadCustomersAsync()
+        {
+            var customers = await _customerService.GetAllCustomersAsync();
+            AvailableCustomers.Clear();
+            AvailableCustomers.Add(new Customer { Id = 0, Name = "[Khách vãng lai]" });
+            foreach (var customer in customers)
+            {
+                AvailableCustomers.Add(customer);
+            }
+        }
 
         [RelayCommand]
         private async Task SelectTable(TableViewModel tableVM)
@@ -184,12 +212,13 @@ namespace QuanLyQuanBida.UI.ViewModels
             {
                 CurrentSessionOrders.Clear();
             }
-
-            // SỬA LỖI: Thông báo cho các nút cập nhật trạng thái
             StartSessionCommand.NotifyCanExecuteChanged();
             PauseSessionCommand.NotifyCanExecuteChanged();
             CloseSessionCommand.NotifyCanExecuteChanged();
             AddOrderCommand.NotifyCanExecuteChanged();
+            AssignCustomerToSessionCommand.NotifyCanExecuteChanged();
+            ShowMoveTableCommand.NotifyCanExecuteChanged(); 
+            OnPropertyChanged(nameof(PauseButtonText)); 
         }
 
         private async Task LoadSessionForTableAsync(int tableId)
@@ -206,20 +235,48 @@ namespace QuanLyQuanBida.UI.ViewModels
                 if (CurrentSession != null)
                 {
                     await LoadOrdersForSessionAsync(CurrentSession.Id);
+                    if (CurrentSession.CustomerId.HasValue)
+                    {
+                        CurrentSessionCustomer = AvailableCustomers.FirstOrDefault(c => c.Id == CurrentSession.CustomerId.Value);
+                        SelectedCustomerForSession = CurrentSessionCustomer;
+                    }
+                    else
+                    {
+                        CurrentSessionCustomer = AvailableCustomers.FirstOrDefault(c => c.Id == 0); // Khách vãng lai
+                        SelectedCustomerForSession = CurrentSessionCustomer;
+                    }
                 }
                 else
                 {
                     CurrentSessionOrders.Clear();
+                    CurrentSessionCustomer = null;
+                    SelectedCustomerForSession = null;
                 }
             }
         }
 
         private async Task LoadOrdersForSessionAsync(int sessionId)
         {
-            var orders = await _orderService.GetOrdersBySessionIdAsync(sessionId);
             CurrentSessionOrders.Clear();
+            var orders = await _orderService.GetOrdersBySessionIdAsync(sessionId);
+
+            var grouped = new Dictionary<int, GroupedOrderViewModel>();
             foreach (var order in orders)
-                CurrentSessionOrders.Add(order);
+            {
+                if (grouped.TryGetValue(order.ProductId, out var existingGroup))
+                {
+                    existingGroup.AddOrder(order);
+                }
+                else
+                {
+                    grouped[order.ProductId] = new GroupedOrderViewModel(order);
+                }
+            }
+
+            foreach (var group in grouped.Values)
+            {
+                CurrentSessionOrders.Add(group);
+            }
         }
 
         [RelayCommand(CanExecute = nameof(CanStartSession))]
@@ -243,11 +300,13 @@ namespace QuanLyQuanBida.UI.ViewModels
             {
                 await LoadSessionForTableAsync(SelectedTable.Table.Id);
 
-                // SỬA LỖI: Thông báo cho các nút cập nhật
                 StartSessionCommand.NotifyCanExecuteChanged();
                 PauseSessionCommand.NotifyCanExecuteChanged();
                 CloseSessionCommand.NotifyCanExecuteChanged();
                 AddOrderCommand.NotifyCanExecuteChanged();
+                AssignCustomerToSessionCommand.NotifyCanExecuteChanged();
+                ShowMoveTableCommand.NotifyCanExecuteChanged();
+                OnPropertyChanged(nameof(PauseButtonText)); 
             }
             else
             {
@@ -269,9 +328,8 @@ namespace QuanLyQuanBida.UI.ViewModels
                 await _sessionService.PauseSessionAsync(CurrentSession.Id, _currentUserService.CurrentUser?.Id ?? 0);
             }
             await LoadSessionForTableAsync(SelectedTable.Table.Id);
-
-            // SỬA LỖI: Thông báo cho nút Tạm dừng
             PauseSessionCommand.NotifyCanExecuteChanged();
+            OnPropertyChanged(nameof(PauseButtonText));
         }
 
         [RelayCommand(CanExecute = nameof(IsSessionActive))]
@@ -290,7 +348,16 @@ namespace QuanLyQuanBida.UI.ViewModels
 
             if (newOrder != null)
             {
-                await LoadOrdersForSessionAsync(CurrentSession.Id);
+                newOrder.Product = product; 
+                var existingGroup = CurrentSessionOrders.FirstOrDefault(g => g.ProductId == newOrder.ProductId);
+                if (existingGroup != null)
+                {
+                    existingGroup.AddOrder(newOrder);
+                }
+                else
+                {
+                    CurrentSessionOrders.Add(new GroupedOrderViewModel(newOrder));
+                }
             }
         }
 
@@ -316,11 +383,13 @@ namespace QuanLyQuanBida.UI.ViewModels
 
                 await LoadSessionForTableAsync(SelectedTable.Table.Id);
 
-                // SỬA LỖI: Thông báo cho các nút cập nhật
                 StartSessionCommand.NotifyCanExecuteChanged();
                 PauseSessionCommand.NotifyCanExecuteChanged();
                 CloseSessionCommand.NotifyCanExecuteChanged();
                 AddOrderCommand.NotifyCanExecuteChanged();
+                AssignCustomerToSessionCommand.NotifyCanExecuteChanged();
+                ShowMoveTableCommand.NotifyCanExecuteChanged();
+                OnPropertyChanged(nameof(PauseButtonText));
             }
         }
 
@@ -336,6 +405,7 @@ namespace QuanLyQuanBida.UI.ViewModels
         [RelayCommand] private void ShowInventoryManagement() => App.Services.GetRequiredService<InventoryManagementView>().ShowDialog();
         [RelayCommand] private void ShowShiftManagement() => App.Services.GetRequiredService<ShiftManagementView>().ShowDialog();
         [RelayCommand] private void ShowBackupWindow() => App.Services.GetRequiredService<BackupWindow>().ShowDialog();
+        [RelayCommand] private void ShowAddStockWindow() => App.Services.GetRequiredService<AddStockWindow>().ShowDialog();
 
         [RelayCommand]
         private void Logout()
@@ -350,6 +420,25 @@ namespace QuanLyQuanBida.UI.ViewModels
 
                 var loginView = App.Services.GetRequiredService<LoginView>();
                 loginView.Show();
+            }
+        }
+
+        [RelayCommand(CanExecute = nameof(IsSessionActive))]
+        private async Task AssignCustomerToSession()
+        {
+            if (CurrentSession == null || SelectedCustomerForSession == null) return;
+
+            int? customerId = (SelectedCustomerForSession.Id == 0) ? null : SelectedCustomerForSession.Id;
+
+            bool success = await _sessionService.AssignCustomerToSessionAsync(CurrentSession.Id, customerId);
+            if (success)
+            {
+                CurrentSessionCustomer = SelectedCustomerForSession;
+                MessageBox.Show($"Đã gán khách hàng: {CurrentSessionCustomer.Name}", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                MessageBox.Show("Gán khách hàng thất bại.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -368,5 +457,21 @@ namespace QuanLyQuanBida.UI.ViewModels
         {
             await LoadProductsAsync();
         }
+
+        [RelayCommand(CanExecute = nameof(IsSessionActive))]
+        private async Task ShowMoveTable()
+        {
+            if (CurrentSession == null) return;
+
+            var moveTableVM = App.Services.GetRequiredService<MoveTableViewModel>();
+            await moveTableVM.LoadDataAsync(CurrentSession);
+
+            var moveTableView = new MoveTableView(moveTableVM);
+            moveTableView.ShowDialog();
+
+            // Sau khi cửa sổ đóng, tải lại phiên
+            await LoadSessionForTableAsync(SelectedTable.Table.Id);
+        }
+
     }
 }

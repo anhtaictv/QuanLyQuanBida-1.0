@@ -80,6 +80,8 @@
                           Visibility="{Binding CanManageProducts, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                 <MenuItem Header="Khách hàng" Command="{Binding ShowCustomerManagementCommand}"
                           Visibility="{Binding CanManageCustomers, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                <MenuItem Header="Nhập hàng" Command="{Binding ShowAddStockWindowCommand}"
+                          Visibility="{Binding CanManageInventory, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                 <MenuItem Header="Tồn kho" Command="{Binding ShowInventoryManagementCommand}"
                           Visibility="{Binding CanManageInventory, Converter={StaticResource BooleanToVisibilityConverter}}"/>
             </MenuItem>
@@ -113,56 +115,63 @@
                 </Grid.RowDefinitions>
                 <TextBlock Text="SƠ ĐỒ BÀN" FontSize="16" FontWeight="Bold" Margin="10,5"/>
 
-                <ScrollViewer Grid.Row="1" 
-                              HorizontalScrollBarVisibility="Disabled" 
-                              VerticalScrollBarVisibility="Auto">
+                <TabControl Grid.Row="1" ItemsSource="{Binding TablesView.Groups}" Margin="5">
 
-                    <ItemsControl ItemsSource="{Binding TablesView}">
+                    <TabControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" Margin="5"/>
+                        </DataTemplate>
+                    </TabControl.ItemTemplate>
 
-                        <ItemsControl.GroupStyle>
-                            <GroupStyle HeaderTemplate="{StaticResource GroupHeaderTemplate}">
+                    <TabControl.ContentTemplate>
+                        <DataTemplate>
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{Binding Items}">
 
-                                <GroupStyle.Panel>
-                                    <ItemsPanelTemplate>
-                                        <UniformGrid Columns="5"/>
-                                    </ItemsPanelTemplate>
-                                </GroupStyle.Panel>
-                            </GroupStyle>
-                        </ItemsControl.GroupStyle>
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Columns="5"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
 
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type viewmodels:TableViewModel}">
-                                <Border Style="{StaticResource TableCardStyle}">
-                                    <Border.InputBindings>
-                                        <MouseBinding Gesture="LeftClick" 
-                                                      Command="{Binding DataContext.SelectTableCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                      CommandParameter="{Binding}"/>
-                                    </Border.InputBindings>
-                                    <Grid>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/>
-                                            <RowDefinition Height="*"/>
-                                            <RowDefinition Height="Auto"/>
-                                        </Grid.RowDefinitions>
-                                        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="8,5,8,0">
-                                            <Path Data="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z" 
-                                                  Fill="White" Stroke="Black" StrokeThickness="0.5" Width="12" Height="12" VerticalAlignment="Center"/>
-                                            <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14" Margin="5,0,0,0" VerticalAlignment="Center"/>
-                                        </StackPanel>
-                                        <TextBlock Grid.Row="1" Text="{Binding ElapsedTime}" 
-                                                   FontSize="20" FontWeight="Bold" 
-                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                   Visibility="{Binding IsSessionActive, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                                        <TextBlock Grid.Row="2" Text="{Binding Status}" 
-                                                   FontSize="12" Margin="8" 
-                                                   HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                                                   FontWeight="SemiBold"/>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type viewmodels:TableViewModel}">
+                                            <Border Style="{StaticResource TableCardStyle}">
+                                                <Border.InputBindings>
+                                                    <MouseBinding Gesture="LeftClick" 
+                                                                  Command="{Binding DataContext.SelectTableCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                  CommandParameter="{Binding}"/>
+                                                </Border.InputBindings>
+                                                <Grid>
+                                                    <Grid.RowDefinitions>
+                                                        <RowDefinition Height="Auto"/>
+                                                        <RowDefinition Height="*"/>
+                                                        <RowDefinition Height="Auto"/>
+                                                    </Grid.RowDefinitions>
+                                                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="8,5,8,0">
+                                                        <Path Data="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z" 
+                                                              Fill="White" Stroke="Black" StrokeThickness="0.5" Width="12" Height="12" VerticalAlignment="Center"/>
+                                                        <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14" Margin="5,0,0,0" VerticalAlignment="Center"/>
+                                                    </StackPanel>
+
+                                                    <TextBlock Grid.Row="1" Text="{Binding ElapsedTime}" 
+                                                               FontSize="20" FontWeight="Bold" 
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                               Visibility="{Binding IsSessionActive, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+                                                    <TextBlock Grid.Row="2" Text="{Binding Status}" 
+                                                               FontSize="12" Margin="8" 
+                                                               HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                                               FontWeight="SemiBold"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </DataTemplate>
+                    </TabControl.ContentTemplate>
+                </TabControl>
             </Grid>
 
             <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Center" VerticalAlignment="Stretch"/>
@@ -195,17 +204,39 @@
                         <StackPanel Orientation="Horizontal" Margin="0,10">
                             <Button Content="Mở Phiên" Width="80" Margin="2" 
                                     Command="{Binding StartSessionCommand}"/>
-                            <Button Content="Tạm dừng" Width="80" Margin="2" 
+
+                            <Button Content="{Binding PauseButtonText}" Width="80" Margin="2" 
                                     Command="{Binding PauseSessionCommand}"/>
+
+                            <Button Content="Chuyển Bàn" Width="80" Margin="2" 
+                                    Command="{Binding ShowMoveTableCommand}"/>
+
                             <Button Content="Thanh toán" Width="80" Margin="2" Background="Green"
                                     Command="{Binding CloseSessionCommand}"/>
                         </StackPanel>
 
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <Label Content="Khách hàng:" Padding="0" Margin="0,0,0,2"/>
+                                <ComboBox ItemsSource="{Binding AvailableCustomers}"
+                                          SelectedItem="{Binding SelectedCustomerForSession}"
+                                          DisplayMemberPath="Name"
+                                          Height="25"/>
+                            </StackPanel>
+
+                            <Button Grid.Column="1" Content="Gán" Width="50" Margin="5,0,0,0" 
+                                    Command="{Binding AssignCustomerToSessionCommand}"
+                                    VerticalAlignment="Bottom"/>
+                        </Grid>
                         <TextBlock Text="Danh sách Order:" FontWeight="Bold" Margin="0,10,0,5"/>
                         <DataGrid ItemsSource="{Binding CurrentSessionOrders}" 
                                   AutoGenerateColumns="False" IsReadOnly="True" MaxHeight="200">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="Tên" Binding="{Binding Product.Name}" Width="*"/>
+                                <DataGridTextColumn Header="Tên" Binding="{Binding ProductName}" Width="*"/>
                                 <DataGridTextColumn Header="SL" Binding="{Binding Quantity}" Width="Auto"/>
                                 <DataGridTextColumn Header="Giá" Binding="{Binding Price, StringFormat='N0'}" Width="Auto"/>
                             </DataGrid.Columns>

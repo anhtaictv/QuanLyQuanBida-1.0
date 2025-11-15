@@ -2,6 +2,7 @@
 using QuanLyQuanBida.Core.DTOs;
 using QuanLyQuanBida.Core.Interfaces;
 using QuanLyQuanBida.Infrastructure.Data.Context;
+using static QuanLyQuanBida.Core.DTOs.TableBatchCreateDto;
 
 namespace QuanLyQuanBida.Application.Services
 {
@@ -88,6 +89,72 @@ namespace QuanLyQuanBida.Application.Services
                     IsLowStock = p.Quantity <= 10 
                 })
                 .ToListAsync();
+        }
+        public async Task<List<RevenueByHourDto>> GetRevenueByHourAsync(DateTime startDate, DateTime endDate)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.Invoices
+                .Where(i => i.CreatedAt >= startDate && i.CreatedAt <= endDate)
+                .GroupBy(i => i.CreatedAt.Hour) 
+                .Select(g => new RevenueByHourDto
+                {
+                    Hour = g.Key,
+                    Revenue = g.Sum(i => i.Total),
+                    SessionsCount = g.Count()
+                })
+                .OrderBy(r => r.Hour)
+                .ToListAsync();
+        }
+
+        public async Task<List<RevenueByEmployeeDto>> GetRevenueByEmployeeAsync(DateTime startDate, DateTime endDate)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.Invoices
+                .Include(i => i.Creator) 
+                .Where(i => i.CreatedAt >= startDate && i.CreatedAt <= endDate)
+                .GroupBy(i => i.Creator) 
+                .Select(g => new RevenueByEmployeeDto
+                {
+                    EmployeeName = g.Key.FullName ?? g.Key.Username,
+                    Revenue = g.Sum(i => i.Total),
+                    SessionsCount = g.Count()
+                })
+                .OrderByDescending(r => r.Revenue)
+                .ToListAsync();
+        }
+        public async Task<List<DetailedInvoiceReportDto>> GetDetailedInvoiceReportAsync(DateTime startDate, DateTime endDate)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var invoices = await context.Invoices
+                .AsNoTracking() 
+                .Include(i => i.Session).ThenInclude(s => s.Table)
+                .Include(i => i.Session).ThenInclude(s => s.Customer)
+                .Include(i => i.Session).ThenInclude(s => s.Orders)
+                .Include(i => i.Creator)
+                .Where(i => i.CreatedAt >= startDate && i.CreatedAt <= endDate)
+                .OrderByDescending(i => i.CreatedAt)
+                .ToListAsync();
+
+            return invoices.Select(i =>
+            {
+                var orderTotal = i.Session.Orders.Sum(o => o.Price * o.Quantity);
+                return new DetailedInvoiceReportDto
+                {
+                    SoHoaDon = i.InvoiceNumber,
+                    TenKhachHang = i.Session.Customer?.Name ?? "[Vãng lai]",
+                    KhuVuc = i.Session.Table.Zone ?? "[Không rõ]", 
+                    TenNhanVien = i.Creator.FullName ?? i.Creator.Username,
+                    ThoiGianBatDau = i.Session.StartAt,
+                    ThoiGianKetThuc = i.Session.EndAt,
+                    TongSoPhut = i.Session.TotalMinutes,
+                    TienGio = i.SubTotal - orderTotal,
+                    TienDichVu = orderTotal,
+                    GiamGia = i.Discount,
+                    Thue = i.Tax,
+                    TongCong = i.Total
+                };
+            }).ToList();
         }
     }
 }

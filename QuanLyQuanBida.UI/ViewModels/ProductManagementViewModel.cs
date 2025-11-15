@@ -1,21 +1,24 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.Mvvm.Messaging;
-using Microsoft.Win32;
-using QuanLyQuanBida.Core.DTOs; // <-- THÊM
 using QuanLyQuanBida.Core.Entities;
 using QuanLyQuanBida.Core.Interfaces;
-using QuanLyQuanBida.Infrastructure.Migrations;
 using System.Collections.ObjectModel;
-using System.IO;
-using System.Linq; // <-- THÊM
 using System.Windows;
+using Microsoft.Win32;
+using System.IO;
 using System.Windows.Input;
+using QuanLyQuanBida.Core.DTOs;
+using System.Linq;
+using CommunityToolkit.Mvvm.Messaging;
+using System;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 using MessageBox = System.Windows.MessageBox;
-
+using static QuanLyQuanBida.Core.DTOs.TableBatchCreateDto;
 
 namespace QuanLyQuanBida.UI.ViewModels
 {
+
     public partial class ProductManagementViewModel : ObservableObject, IRecipient<ProductsChangedMessage>
     {
         private readonly IProductService _productService;
@@ -33,31 +36,36 @@ namespace QuanLyQuanBida.UI.ViewModels
         private string _searchText = string.Empty;
         [ObservableProperty]
         private bool _isEditing = false;
+
         [ObservableProperty]
         private ObservableCollection<string> _categories = new();
         [ObservableProperty]
         private ObservableCollection<string> _units = new();
 
+        // SỬA: Inject thêm service
         public ProductManagementViewModel(IProductService productService, IAuditService auditService, ICurrentUserService currentUserService, IMessenger messenger)
         {
             _productService = productService;
-            _auditService = auditService; 
+            _auditService = auditService;
             _currentUserService = currentUserService;
-            _messenger = messenger; // <-- THÊM
-            _messenger.RegisterAll(this);
+            _messenger = messenger; // SỬA: Thêm
+            _messenger.RegisterAll(this); // SỬA: Đăng ký nhận tin
             _ = LoadProductsAsync();
         }
+
         private async Task LoadProductsAsync()
         {
             Products.Clear();
             var productsFromDb = await _productService.GetAllProductsAsync();
+
             Categories.Clear();
             Units.Clear();
+
             var distinctCategories = productsFromDb
-        .Where(p => !string.IsNullOrEmpty(p.Category))
-        .Select(p => p.Category!)
-        .Distinct()
-        .OrderBy(c => c);
+                .Where(p => !string.IsNullOrEmpty(p.Category))
+                .Select(p => p.Category!)
+                .Distinct()
+                .OrderBy(c => c);
 
             var distinctUnits = productsFromDb
                 .Where(p => !string.IsNullOrEmpty(p.Unit))
@@ -89,6 +97,7 @@ namespace QuanLyQuanBida.UI.ViewModels
                 Products.Add(product);
             }
         }
+
         [RelayCommand]
         private async Task Search()
         {
@@ -101,8 +110,10 @@ namespace QuanLyQuanBida.UI.ViewModels
             SelectedProduct = null;
             ProductForm = new ProductDto { Unit = "Cái", IsInventoryTracked = true, Price = 10000 };
             IsEditing = false;
-            SearchText = string.Empty; // <-- SỬA LỖI: Xóa bộ lọc tìm kiếm
+            SearchText = string.Empty;
         }
+
+        [RelayCommand]
         private void EditProduct(Product product)
         {
             if (product == null) return;
@@ -122,98 +133,99 @@ namespace QuanLyQuanBida.UI.ViewModels
         [RelayCommand]
         private async Task SaveProduct()
         {
-            if (string.IsNullOrWhiteSpace(ProductForm.Name) || ProductForm.Price <= 0)
+            if (string.IsNullOrWhiteSpace(ProductForm.Name) || ProductForm.Price <= 0 || string.IsNullOrWhiteSpace(ProductForm.Unit))
             {
-                MessageBox.Show("Vui lòng điền đầy đủ thông tin bắt buộc.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show("Vui lòng điền Tên, Giá và Đơn vị tính.", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
             var currentUserId = _currentUserService.CurrentUser?.Id ?? 0;
-            string oldValue = null;
+            string logAction = "CREATE_PRODUCT";
+            string? oldValue = null;
+            int? targetId = null;
 
             try
             {
                 if (IsEditing)
                 {
+                    logAction = "UPDATE_PRODUCT";
+                    targetId = ProductForm.Id;
                     var existing = await _productService.GetProductByIdAsync(ProductForm.Id);
+                    if (existing == null)
+                    {
+                        MessageBox.Show("Sản phẩm không tồn tại.");
+                        return;
+                    }
                     oldValue = $"Name: {existing.Name}, Price: {existing.Price}";
 
-                    bool success = await _productService.UpdateProductAsync(ProductForm);
-                    if (success)
-                    {
-                        await _auditService.LogActionAsync(currentUserId, "UPDATE_PRODUCT", "Products", ProductForm.Id, oldValue, $"Name: {ProductForm.Name}, Price: {ProductForm.Price}");
-                    }
+                    await _productService.UpdateProductAsync(ProductForm);
                 }
                 else
                 {
                     var newProduct = await _productService.CreateProductAsync(ProductForm);
-                    if (newProduct != null)
-                    {
-                        await _auditService.LogActionAsync(currentUserId, "CREATE_PRODUCT", "Products", newProduct.Id, newValue: $"Name: {newProduct.Name}, Price: {newProduct.Price}");
-                    }
+                    targetId = newProduct.Id;
                 }
+
+                await _auditService.LogActionAsync(currentUserId, logAction, "Products", targetId, oldValue, $"Name: {ProductForm.Name}, Price: {ProductForm.Price}");
                 MessageBox.Show("Lưu thông tin sản phẩm thành công.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+
                 _messenger.Send(new ProductsChangedMessage());
-                AddNew(); 
+                AddNew();
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Lỗi khi lưu thông tin sản phẩm: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
         [RelayCommand]
         private void Cancel()
         {
             AddNew();
         }
+
         [RelayCommand]
         private async Task DeleteProduct(Product product)
         {
-            if (product == null) return;
-            if (MessageBox.Show($"Bạn có chắc chắn muốn xóa sản phẩm '{product.Name}'?", "Xác nhận",
-                MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+            if (product == null || MessageBox.Show($"Bạn có chắc chắn muốn xóa sản phẩm '{product.Name}'?", "Xác nhận",
+                MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+
+            try
             {
-                try
+                var success = await _productService.DeleteProductAsync(product.Id);
+                if (success)
                 {
-                    var success = await _productService.DeleteProductAsync(product.Id);
-                    if (success)
-                    {
-                        await _auditService.LogActionAsync(_currentUserService.CurrentUser?.Id ?? 0, "DELETE_PRODUCT", "Products", product.Id, oldValue: $"Name: {product.Name}");
-                        MessageBox.Show("Xóa sản phẩm thành công.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
-                        _messenger.Send(new ProductsChangedMessage());
-                        
-                    }
-                    else
-                    {
-                        MessageBox.Show($"Không thể xóa sản phẩm. (Có thể sản phẩm đã được sử dụng trong hóa đơn).", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
-                    }
+                    await _auditService.LogActionAsync(_currentUserService.CurrentUser?.Id ?? 0, "DELETE_PRODUCT", "Products", product.Id, oldValue: $"Name: {product.Name}");
+                    MessageBox.Show("Xóa sản phẩm thành công.", "Thông báo", MessageBoxButton.OK, MessageBoxImage.Information);
+                    _messenger.Send(new ProductsChangedMessage());
                 }
-                catch (Exception ex)
+                else
                 {
-                    MessageBox.Show($"Lỗi khi xóa sản phẩm: {ex.Message} (Sản phẩm có thể đang được sử dụng)", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show($"Không thể xóa sản phẩm (Có thể sản phẩm đã được sử dụng).", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Lỗi khi xóa sản phẩm: {ex.Message}", "Lỗi", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
+
         [RelayCommand]
         private void ImportFromExcel()
         {
-            MessageBox.Show("TODO: Chức năng Import Excel");
+            MessageBox.Show("Chức năng này chưa được triển khai.");
         }
 
         [RelayCommand]
         private void AddNewCategory()
         {
-            // Sử dụng InputBox của VisualBasic
             string newCategory = Microsoft.VisualBasic.Interaction.InputBox("Nhập tên danh mục mới:", "Tạo Danh mục mới");
-
             if (!string.IsNullOrWhiteSpace(newCategory))
             {
-                // 1. Thêm vào danh sách ComboBox
                 if (!Categories.Contains(newCategory))
                 {
                     Categories.Add(newCategory);
                 }
-                // 2. Tự động chọn danh mục đó
                 ProductForm.Category = newCategory;
             }
         }
@@ -222,7 +234,6 @@ namespace QuanLyQuanBida.UI.ViewModels
         private void AddNewUnit()
         {
             string newUnit = Microsoft.VisualBasic.Interaction.InputBox("Nhập tên đơn vị mới (Vd: Thùng, Gói):", "Tạo Đơn vị mới");
-
             if (!string.IsNullOrWhiteSpace(newUnit))
             {
                 if (!Units.Contains(newUnit))
@@ -232,9 +243,9 @@ namespace QuanLyQuanBida.UI.ViewModels
                 ProductForm.Unit = newUnit;
             }
         }
+
         public async void Receive(ProductsChangedMessage message)
         {
-            // Khi nhận được tin nhắn, tải lại danh sách sản phẩm
             await LoadProductsAsync();
         }
     }

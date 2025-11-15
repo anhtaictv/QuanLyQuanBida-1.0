@@ -128,5 +128,16 @@ namespace QuanLyQuanBida.Application.Services
                 .Where(s => s.TableId == tableId && s.Status != "Finished")
                 .FirstOrDefaultAsync();
         }
+
+        public async Task<bool> AssignCustomerToSessionAsync(int sessionId, int? customerId)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var session = await context.Sessions.FindAsync(sessionId);
+            if (session == null) return false;
+
+            session.CustomerId = customerId;
+            await context.SaveChangesAsync();
+            return true;
+        }
     }
 }

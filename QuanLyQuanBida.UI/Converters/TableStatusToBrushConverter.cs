@@ -17,10 +17,10 @@ namespace QuanLyQuanBida.UI.Converters
         {
             return (value?.ToString()) switch
             {
-                "Occupied" => _occupiedBrush,
+                "Occupied" => _freeBrush,
                 "Reserved" => _reservedBrush,
                 "Maintenance" => _maintenanceBrush,
-                _ => _freeBrush, // "Free"
+                _ => _occupiedBrush,
             };
         }
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

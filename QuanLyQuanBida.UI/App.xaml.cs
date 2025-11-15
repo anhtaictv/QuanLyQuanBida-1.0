@@ -92,6 +92,7 @@ namespace QuanLyQuanBida.UI
                 services.AddTransient<IPermissionService, PermissionService>();
                 services.AddTransient<IUserService, UserService>();
                 services.AddSingleton<IMessenger>(WeakReferenceMessenger.Default);
+                services.AddSingleton<ICustomerService, CustomerService>();
 
 
                 // --- Views & ViewModels ---
@@ -136,6 +137,9 @@ namespace QuanLyQuanBida.UI
 
                 services.AddTransient<BatchCreateTableWindow>();
                 services.AddTransient<BatchCreateTableViewModel>();
+
+                services.AddTransient<MoveTableView>();
+                services.AddTransient<MoveTableViewModel>();
 
             });
         private static string BuildConnectionString()

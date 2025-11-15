@@ -11,8 +11,7 @@ namespace QuanLyQuanBida.Core.Interfaces
         Task<bool> ResumeSessionAsync(int sessionId, int userId);
         Task<Session?> CloseSessionAsync(int sessionId, int userId);
         Task<bool> MoveSessionAsync(int sessionId, int targetTableId, int userId);
-
-        // Thêm phương thức này để lấy session đang hoạt động của một bàn
         Task<Session?> GetActiveSessionByTableIdAsync(int tableId);
+        Task<bool> AssignCustomerToSessionAsync(int sessionId, int? customerId);
     }
 }

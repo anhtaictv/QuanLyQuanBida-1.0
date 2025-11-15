@@ -5,78 +5,133 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:QuanLyQuanBida.UI.Views"
         xmlns:viewmodels="clr-namespace:QuanLyQuanBida.UI.ViewModels"
+        xmlns:converters="clr-namespace:QuanLyQuanBida.UI.Converters"
         mc:Ignorable="d"
         Title="Báo cáo và Thống kê" Height="700" Width="1000"
         WindowStartupLocation="CenterScreen">
-    <Window.DataContext>
-        <viewmodels:ReportsViewModel/>
-    </Window.DataContext>
+
     <Grid Margin="10">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Report Type Selection -->
         <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
-            <TextBlock Text="Loại báo cáo:" VerticalAlignment="Center" Margin="0,0,10,0"/>
-            <ComboBox x:Name="ReportTypeComboBox" Width="200" Height="25" 
-                      SelectedIndex="0" SelectedValue="{Binding SelectedReportType}">
-                <ComboBoxItem Content="Doanh thu theo ngày"/>
-                <ComboBoxItem Content="Doanh thu theo bàn"/>
-                <ComboBoxItem Content="Doanh thu theo sản phẩm"/>
-                <ComboBoxItem Content="Công nợ khách hàng"/>
-                <ComboBoxItem Content="Tồn kho"/>
-            </ComboBox>
+            <TextBlock Text="Lọc nhanh:" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="Bold"/>
+            <Button Content="Hôm nay" Width="80" Margin="2" Command="{Binding SetDateTodayCommand}"/>
+            <Button Content="Tuần này" Width="80" Margin="2" Command="{Binding SetDateThisWeekCommand}"/>
+            <Button Content="Tháng này" Width="80" Margin="2" Command="{Binding SetDateThisMonthCommand}"/>
+            <Button Content="Tháng trước" Width="80" Margin="2" Command="{Binding SetDateLastMonthCommand}"/>
         </StackPanel>
 
-        <!-- Date Range Selection -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
             <TextBlock Text="Từ ngày:" VerticalAlignment="Center" Margin="0,0,5,0"/>
             <DatePicker Width="120" Height="25" SelectedDate="{Binding StartDate}"/>
-
             <TextBlock Text="Đến ngày:" VerticalAlignment="Center" Margin="20,0,5,0"/>
             <DatePicker Width="120" Height="25" SelectedDate="{Binding EndDate}"/>
+        </StackPanel>
 
-            <Button Content="Xem báo cáo" Width="100" Margin="20,0,0,0" Command="{Binding GenerateReportCommand}"/>
-            <Button Content="Xuất Excel" Width="100" Margin="10,0,0,0" Command="{Binding ExportToExcelCommand}"/>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,10">
+            <TextBlock Text="Loại báo cáo:" VerticalAlignment="Center" Margin="0,0,10,0" FontWeight="Bold"/>
+            <ComboBox x:Name="ReportTypeComboBox" Width="200" Height="25"
+                      Text="{Binding SelectedReportType}"
+                      IsEditable="True" IsReadOnly="True"
+                      ItemsSource="{Binding AvailableReportTypes}"/>
+
+            <Button Content="Xuất Excel" Width="100" Margin="20,0,0,0" Command="{Binding ExportToExcelCommand}"/>
             <Button Content="In" Width="80" Margin="10,0,0,0" Command="{Binding PrintCommand}"/>
         </StackPanel>
 
-        <!-- Report Content -->
-        <Grid Grid.Row="2">
-            <TabControl>
-                <TabItem Header="Báo cáo">
-                    <DataGrid x:Name="ReportDataGrid" AutoGenerateColumns="False" 
-                              IsReadOnly="True" ItemsSource="{Binding ReportData}">
-                        <DataGrid.Columns>
-                            <!-- Columns will be dynamically generated based on report type -->
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </TabItem>
+        <Grid Grid.Row="3">
 
-                <TabItem Header="Biểu đồ">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
+            <Grid.Resources>
+                <converters:ReportTypeToVisibilityConverter x:Key="ReportTypeConverter" />
+            </Grid.Resources>
 
-                        <StackPanel Grid.Column="0" Margin="10">
-                            <TextBlock Text="Biểu đồ doanh thu" FontWeight="Bold" FontSize="14" Margin="0,0,0,10"/>
-                            <!-- Chart control will be added here -->
-                            <Border Background="LightGray" Height="300"/>
-                        </StackPanel>
+            <DataGrid ItemsSource="{Binding ReportData}" 
+                      AutoGenerateColumns="False" IsReadOnly="True" FrozenColumnCount="2"
+                      Visibility="{Binding SelectedReportType, Converter={StaticResource ReportTypeConverter}, ConverterParameter='Báo cáo chi tiết hóa đơn'}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Số HĐ" Binding="{Binding SoHoaDon}"/>
+                    <DataGridTextColumn Header="Khách hàng" Binding="{Binding TenKhachHang}" Width="*"/>
+                    <DataGridTextColumn Header="Khu vực" Binding="{Binding KhuVuc}"/>
+                    <DataGridTextColumn Header="Nhân viên" Binding="{Binding TenNhanVien}" Width="*"/>
+                    <DataGridTextColumn Header="Bắt đầu" Binding="{Binding ThoiGianBatDau, StringFormat='HH:mm dd/MM/yy'}"/>
+                    <DataGridTextColumn Header="Kết thúc" Binding="{Binding ThoiGianKetThuc, StringFormat='HH:mm dd/MM/yy'}"/>
+                    <DataGridTextColumn Header="Tổng phút" Binding="{Binding TongSoPhut}"/>
+                    <DataGridTextColumn Header="Tiền giờ" Binding="{Binding TienGio, StringFormat='N0'}"/>
+                    <DataGridTextColumn Header="Tiền dịch vụ" Binding="{Binding TienDichVu, StringFormat='N0'}"/>
+                    <DataGridTextColumn Header="Giảm giá" Binding="{Binding GiamGia, StringFormat='N0'}"/>
+                    <DataGridTextColumn Header="Thuế" Binding="{Binding Thue, StringFormat='N0'}"/>
+                    <DataGridTextColumn Header="Tổng cộng" Binding="{Binding TongCong, StringFormat='N0'}" FontWeight="Bold"/>
+                </DataGrid.Columns>
+            </DataGrid>
 
-                        <StackPanel Grid.Column="1" Margin="10">
-                            <TextBlock Text="Biểu đồ sản phẩm bán chạy" FontWeight="Bold" FontSize="14" Margin="0,0,0,10"/>
-                            <!-- Chart control will be added here -->
-                            <Border Background="LightGray" Height="300"/>
-                        </StackPanel>
-                    </Grid>
-                </TabItem>
-            </TabControl>
+            <DataGrid ItemsSource="{Binding ReportData}" 
+                      AutoGenerateColumns="False" IsReadOnly="True"
+                      Visibility="{Binding SelectedReportType, Converter={StaticResource ReportTypeConverter}, ConverterParameter='Doanh thu theo ngày'}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Ngày" Binding="{Binding Date, StringFormat='dd/MM/yyyy'}" Width="*"/>
+                    <DataGridTextColumn Header="Doanh thu" Binding="{Binding Revenue, StringFormat='N0'}" Width="*"/>
+                    <DataGridTextColumn Header="Số phiên" Binding="{Binding SessionsCount}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <DataGrid ItemsSource="{Binding ReportData}" 
+                      AutoGenerateColumns="False" IsReadOnly="True"
+                      Visibility="{Binding SelectedReportType, Converter={StaticResource ReportTypeConverter}, ConverterParameter='Doanh thu theo giờ'}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Giờ" Binding="{Binding Hour, StringFormat='{}{0}h'}" Width="*"/>
+                    <DataGridTextColumn Header="Doanh thu" Binding="{Binding Revenue, StringFormat='N0'}" Width="*"/>
+                    <DataGridTextColumn Header="Số phiên" Binding="{Binding SessionsCount}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <DataGrid ItemsSource="{Binding ReportData}" 
+                      AutoGenerateColumns="False" IsReadOnly="True"
+                      Visibility="{Binding SelectedReportType, Converter={StaticResource ReportTypeConverter}, ConverterParameter='Doanh thu theo ca (Nhân viên)'}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Tên Nhân viên" Binding="{Binding EmployeeName}" Width="*"/>
+                    <DataGridTextColumn Header="Doanh thu" Binding="{Binding Revenue, StringFormat='N0'}" Width="*"/>
+                    <DataGridTextColumn Header="Số phiên" Binding="{Binding SessionsCount}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <DataGrid ItemsSource="{Binding ReportData}" 
+                      AutoGenerateColumns="False" IsReadOnly="True"
+                      Visibility="{Binding SelectedReportType, Converter={StaticResource ReportTypeConverter}, ConverterParameter='Doanh thu theo bàn'}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Mã Bàn" Binding="{Binding TableCode}" Width="*"/>
+                    <DataGridTextColumn Header="Tên Bàn" Binding="{Binding TableName}" Width="*"/>
+                    <DataGridTextColumn Header="Doanh thu" Binding="{Binding Revenue, StringFormat='N0'}" Width="*"/>
+                    <DataGridTextColumn Header="Số phiên" Binding="{Binding SessionsCount}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <DataGrid ItemsSource="{Binding ReportData}" 
+                      AutoGenerateColumns="False" IsReadOnly="True"
+                      Visibility="{Binding SelectedReportType, Converter={StaticResource ReportTypeConverter}, ConverterParameter='Doanh thu theo sản phẩm'}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Tên Sản phẩm" Binding="{Binding ProductName}" Width="*"/>
+                    <DataGridTextColumn Header="Danh mục" Binding="{Binding Category}" Width="*"/>
+                    <DataGridTextColumn Header="Số lượng bán" Binding="{Binding Quantity}" Width="*"/>
+                    <DataGridTextColumn Header="Doanh thu" Binding="{Binding Revenue, StringFormat='N0'}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <DataGrid ItemsSource="{Binding ReportData}" 
+                      AutoGenerateColumns="False" IsReadOnly="True"
+                      Visibility="{Binding SelectedReportType, Converter={StaticResource ReportTypeConverter}, ConverterParameter='Tồn kho'}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Tên Sản phẩm" Binding="{Binding ProductName}" Width="*"/>
+                    <DataGridTextColumn Header="Danh mục" Binding="{Binding Category}" Width="*"/>
+                    <DataGridTextColumn Header="Tồn kho" Binding="{Binding CurrentStock}" Width="*"/>
+                    <DataGridTextColumn Header="Mức Tối thiểu" Binding="{Binding MinStock}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+
         </Grid>
     </Grid>
 </Window>

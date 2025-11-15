@@ -124,7 +124,35 @@ public class TableBatchCreateDto
     public string Zone { get; set; } = "Tầng 1";
     public int Seats { get; set; } = 4;
     public string NamePrefix { get; set; } = "Bàn ";
-    public int Padding { get; set; } = 2; // (Để tạo ra "01", "02")
+    public int Padding { get; set; } = 2;
+    public class RevenueByHourDto
+    {
+        public int Hour { get; set; }
+        public decimal Revenue { get; set; }
+        public int SessionsCount { get; set; }
+    }
+
+    public class RevenueByEmployeeDto
+    {
+        public string EmployeeName { get; set; } = string.Empty;
+        public decimal Revenue { get; set; }
+        public int SessionsCount { get; set; }
+    }
+    public class DetailedInvoiceReportDto
+    {
+        public string SoHoaDon { get; set; }
+        public string TenKhachHang { get; set; }
+        public string KhuVuc { get; set; }
+        public string TenNhanVien { get; set; }
+        public DateTime ThoiGianBatDau { get; set; }
+        public DateTime? ThoiGianKetThuc { get; set; }
+        public int TongSoPhut { get; set; }
+        public decimal TienGio { get; set; }
+        public decimal TienDichVu { get; set; }
+        public decimal GiamGia { get; set; }
+        public decimal Thue { get; set; }
+        public decimal TongCong { get; set; }
+    }
+    public class TablesChangedMessage { }
+    public class ProductsChangedMessage { }
 }
-public class TablesChangedMessage { }
-public class ProductsChangedMessage { }

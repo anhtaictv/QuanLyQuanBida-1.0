@@ -7,5 +7,7 @@
     <Application.Resources>
         <converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <converters:TableStatusToBrushConverter x:Key="StatusToBrushConverter"/>
+        <converters:ReportTypeToVisibilityConverter x:Key="ReportTypeToVisibilityConverter"/>
     </Application.Resources>
 </Application>

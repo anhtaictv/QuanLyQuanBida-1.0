@@ -8,9 +8,6 @@
         mc:Ignorable="d"
         Title="Nhập hàng" Height="300" Width="500"
         WindowStartupLocation="CenterScreen">
-    <Window.DataContext>
-        <viewmodels:AddStockViewModel/>
-    </Window.DataContext>
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>

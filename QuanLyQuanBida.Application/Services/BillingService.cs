@@ -52,7 +52,7 @@ namespace QuanLyQuanBida.Application.Services
             // 1. Tính toán Giờ chơi và Tiền giờ
             var rate = await _rateService.GetApplicableRateAsync(session.StartAt)
                 ?? new Rate { PricePerHour = 100000 };
-            int roundingRule = await _settingService.GetSettingAsync<int>("TimeRoundingMinutes", 1);
+            int roundingRule = 30;
             decimal timeCharge = CalculateTimeCharge(session.TotalMinutes, rate.PricePerHour, roundingRule);
 
             // 2. Tính tổng Order
@@ -138,7 +138,6 @@ namespace QuanLyQuanBida.Application.Services
             {
                 return false;
             }
-            // Create payment record
             var paymentRecord = new Payment
             {
                 InvoiceId = invoiceId,
@@ -148,10 +147,8 @@ namespace QuanLyQuanBida.Application.Services
                 CreatedAt = DateTime.UtcNow
             };
             context.Payments.Add(paymentRecord);
-            // Update invoice
             invoice.PaidAmount += payment.Amount;
             invoice.PaymentMethod = payment.Method;
-            // Mark as fully paid if applicable
             if (invoice.PaidAmount >= invoice.Total)
             {
                 invoice.PaymentMethod = "Paid";
@@ -162,15 +159,26 @@ namespace QuanLyQuanBida.Application.Services
 
         private decimal CalculateTimeCharge(int totalMinutes, decimal pricePerHour, int roundingRuleMinutes)
         {
-
             if (totalMinutes <= 0) return 0m;
-            decimal minutesToBill = totalMinutes;
-            if (roundingRuleMinutes > 1)
+
+            decimal firstHourPrice = pricePerHour;
+
+            if (totalMinutes <= 60)
             {
-                minutesToBill = Math.Ceiling((decimal)totalMinutes / roundingRuleMinutes) * roundingRuleMinutes;
+                return firstHourPrice;
             }
+
             decimal pricePerMinute = pricePerHour / 60m;
-            return minutesToBill * pricePerMinute;
+
+            int remainingMinutes = totalMinutes - 60;
+
+            int blockMinutes = (roundingRuleMinutes <= 0) ? 30 : roundingRuleMinutes; // Mặc định 30 phút nếu setting lỗi
+
+            decimal roundedRemainingMinutes = Math.Ceiling((decimal)remainingMinutes / blockMinutes) * blockMinutes;
+
+            decimal remainingCharge = roundedRemainingMinutes * pricePerMinute;
+
+            return firstHourPrice + remainingCharge;
         }
 
         private string GenerateInvoiceNumber()
